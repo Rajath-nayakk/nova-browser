@@ -43,7 +43,7 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [ ] **M5.5**: Add encrypted vault backup export and import (`.novavault` format with master password).
 
 ### Milestone 6: Accessibility, Shortcuts & Error Handling
-- [ ] **M6.1**: Implement interactive Keyboard Shortcuts Cheat Sheet modal (`Ctrl+/` or `?`).
+- [x] **M6.1**: Implement interactive Keyboard Shortcuts Cheat Sheet modal (`Ctrl+/` or `?`).
 - [ ] **M6.2**: Add internal Error View (`nova://error`) for offline state, DNS failures, and connection timeouts.
 - [ ] **M6.3**: Implement diagnostic logging viewer (`nova://logs`) for inspecting local security events without leaking user data.
 - [ ] **M6.4**: Full ARIA accessibility audit and keyboard focus ring enhancements across all dialogs.

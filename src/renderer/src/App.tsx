@@ -15,6 +15,7 @@ import { SettingsView } from './views/SettingsView';
 import { WarningView } from './views/WarningView';
 import { VaultView } from './views/VaultView';
 import { LinkLensModal } from './components/LinkLensModal';
+import { ShortcutsModal } from './components/ShortcutsModal';
 
 import {
   Bookmark,
@@ -43,6 +44,7 @@ export const App: React.FC = () => {
   // Modals & Floating Bars
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showLinkLensModal, setShowLinkLensModal] = useState(false);
   const [showFindInPage, setShowFindInPage] = useState(false);
   const [findResult, setFindResult] = useState<FindInPageResult | undefined>();
@@ -292,7 +294,13 @@ export const App: React.FC = () => {
       } else if (e.altKey && e.key === 'ArrowRight') {
         e.preventDefault();
         handleForward();
+      } else if (isCtrl && (e.key === '/' || e.key === '?')) {
+        e.preventDefault();
+        setShowShortcutsModal((prev) => !prev);
       } else if (e.key === 'Escape') {
+        if (showShortcutsModal) {
+          setShowShortcutsModal(false);
+        }
         if (showFindInPage) {
           handleStopFind();
         }
@@ -526,6 +534,7 @@ export const App: React.FC = () => {
         onOpenAbout={() => setShowAboutModal(true)}
         onOpenLinkLens={() => setShowLinkLensModal(true)}
         onOpenVault={() => handleNavigate('nova://vault')}
+        onOpenShortcuts={() => setShowShortcutsModal(true)}
         theme={settings.theme}
         onToggleTheme={async () => {
           const next = settings.theme === 'dark' ? 'light' : 'dark';
@@ -594,6 +603,12 @@ export const App: React.FC = () => {
       {showAboutModal && (
         <AboutModal onClose={() => setShowAboutModal(false)} />
       )}
+
+      {/* Keyboard Shortcuts Cheat Sheet Modal */}
+      <ShortcutsModal
+        isOpen={showShortcutsModal}
+        onClose={() => setShowShortcutsModal(false)}
+      />
     </div>
   );
 };

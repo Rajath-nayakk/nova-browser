@@ -49,6 +49,7 @@ interface NavbarProps {
   onOpenAbout: () => void;
   onOpenLinkLens?: () => void;
   onOpenVault?: () => void;
+  onOpenShortcuts?: () => void;
   theme: string;
   onToggleTheme: () => void;
 }
@@ -86,6 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAbout,
   onOpenLinkLens,
   onOpenVault,
+  onOpenShortcuts,
   theme,
   onToggleTheme,
 }) => {
@@ -338,6 +340,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           onOpenAbout={onOpenAbout}
           onOpenVault={onOpenVault}
           onOpenLinkLens={onOpenLinkLens}
+          onOpenShortcuts={onOpenShortcuts}
           theme={theme}
           onToggleTheme={onToggleTheme}
         />

@@ -18,6 +18,7 @@ import {
   Moon,
   Lock,
   Sparkles,
+  Keyboard,
 } from 'lucide-react';
 
 interface MainMenuProps {
@@ -38,6 +39,7 @@ interface MainMenuProps {
   onOpenAbout: () => void;
   onOpenVault?: () => void;
   onOpenLinkLens?: () => void;
+  onOpenShortcuts?: () => void;
   theme: string;
   onToggleTheme: () => void;
 }
@@ -60,6 +62,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   onOpenAbout,
   onOpenVault,
   onOpenLinkLens,
+  onOpenShortcuts,
   theme,
   onToggleTheme,
 }) => {
@@ -188,6 +191,15 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       icon: <Settings size={15} />,
       label: 'Settings',
       onClick: onOpenSettings,
+    },
+    {
+      icon: <Keyboard size={15} style={{ color: '#a78bfa' }} />,
+      label: 'Keyboard Shortcuts',
+      shortcut: 'Ctrl+/',
+      onClick: () => {
+        onClose();
+        onOpenShortcuts?.();
+      },
     },
     {
       icon: <Info size={15} />,
