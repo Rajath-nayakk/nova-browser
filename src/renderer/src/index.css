@@ -187,3 +187,18 @@ input, textarea {
 .animate-progress-bar {
   animation: progressSweep 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
+
+/* Accessibility Focus Rings */
+:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
+}

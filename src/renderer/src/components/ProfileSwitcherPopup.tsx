@@ -17,8 +17,22 @@ export const ProfileSwitcherPopup: React.FC<ProfileSwitcherPopupProps> = ({
   onManageProfiles,
   onClose,
 }) => {
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Identity Profiles"
       className="glass animate-fade-in"
       style={{
         position: 'absolute',
@@ -49,6 +63,7 @@ export const ProfileSwitcherPopup: React.FC<ProfileSwitcherPopupProps> = ({
         </span>
         <button
           onClick={onClose}
+          aria-label="Close popup"
           style={{ color: 'var(--text-muted)', padding: '2px', cursor: 'pointer' }}
         >
           <X size={14} />

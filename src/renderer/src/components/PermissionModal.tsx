@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Camera, Mic, MapPin, Bell, Shield, X } from 'lucide-react';
 import { PermissionRequest } from '@shared/types';
 
@@ -12,6 +12,17 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
   onRespond,
 }) => {
   const [remember, setRemember] = useState(true);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onRespond('deny', false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onRespond]);
 
   const getIcon = () => {
     switch (request.permission) {
@@ -30,6 +41,10 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
 
   return (
     <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="permission-request-title"
+      aria-describedby="permission-request-desc"
       style={{
         position: 'fixed',
         top: 0,
@@ -45,6 +60,7 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
     >
       <div
         className="glass animate-fade-in"
+        onClick={(e) => e.stopPropagation()}
         style={{
           width: '380px',
           borderRadius: 'var(--radius-lg)',
@@ -68,8 +84,8 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
             {getIcon()}
           </div>
           <div>
-            <h3 style={{ fontSize: '15px', fontWeight: 600 }}>Permission Request</h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            <h3 id="permission-request-title" style={{ fontSize: '15px', fontWeight: 600 }}>Permission Request</h3>
+            <p id="permission-request-desc" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
               <strong>{request.origin}</strong> wants to use your{' '}
               <strong>{request.permission}</strong>
             </p>

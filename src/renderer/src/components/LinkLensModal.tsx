@@ -20,6 +20,17 @@ export const LinkLensModal: React.FC<LinkLensModalProps> = ({ initialUrl = '', o
     }
   }, [initialUrl]);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const inspect = async (urlStr: string) => {
     if (!urlStr.trim()) return;
     if (window.novaAPI?.inspectLink) {
@@ -54,19 +65,29 @@ export const LinkLensModal: React.FC<LinkLensModalProps> = ({ initialUrl = '', o
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-[#161926] border border-gray-800 rounded-2xl p-6 max-w-xl w-full shadow-2xl relative overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="linklens-modal-title"
+      onClick={onClose}
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#161926] border border-gray-800 rounded-2xl p-6 max-w-xl w-full shadow-2xl relative overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-800">
           <div className="flex items-center gap-2">
             <NovaLogo size={20} />
-            <span className="font-bold text-white text-base">NOVA Link Lens</span>
+            <span id="linklens-modal-title" className="font-bold text-white text-base">NOVA Link Lens</span>
             <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded">
               Deep Inspector
             </span>
           </div>
           <button
             onClick={onClose}
+            aria-label="Close dialog"
             className="p-1.5 hover:bg-gray-800 rounded-xl text-gray-400 hover:text-white transition"
           >
             <X size={18} />

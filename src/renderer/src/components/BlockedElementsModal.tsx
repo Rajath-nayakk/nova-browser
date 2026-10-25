@@ -112,6 +112,9 @@ export const BlockedElementsModal: React.FC<BlockedElementsModalProps> = ({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="blocked-elements-inspector-title"
       style={{
         position: 'fixed',
         top: 0,
@@ -173,7 +176,7 @@ export const BlockedElementsModal: React.FC<BlockedElementsModalProps> = ({
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
+                <h3 id="blocked-elements-inspector-title" style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
                   Live Blocked Elements Inspector
                 </h3>
                 <span

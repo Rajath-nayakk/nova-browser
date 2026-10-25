@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Shield, Check, Lock, EyeOff, Cpu, X, ExternalLink } from 'lucide-react';
 
 interface AboutModalProps {
@@ -6,8 +6,23 @@ interface AboutModalProps {
 }
 
 export const AboutModal: React.FC<AboutModalProps> = ({ onClose }) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="about-browser-title"
+      onClick={onClose}
       style={{
         position: 'fixed',
         top: 0,
@@ -23,6 +38,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ onClose }) => {
     >
       <div
         className="glass animate-fade-in"
+        onClick={(e) => e.stopPropagation()}
         style={{
           width: '460px',
           borderRadius: 'var(--radius-lg)',
@@ -49,7 +65,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ onClose }) => {
               <Shield size={26} strokeWidth={2.4} />
             </div>
             <div>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.3px' }}>
+              <h2 id="about-browser-title" style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.3px' }}>
                 NOVA Browser
               </h2>
               <div style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>
@@ -57,7 +73,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ onClose }) => {
               </div>
             </div>
           </div>
-          <button onClick={onClose} style={{ color: 'var(--text-muted)', padding: '4px' }}>
+          <button onClick={onClose} aria-label="Close dialog" style={{ color: 'var(--text-muted)', padding: '4px' }}>
             <X size={18} />
           </button>
         </div>

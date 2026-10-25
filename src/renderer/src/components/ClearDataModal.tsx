@@ -21,6 +21,17 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
   const [isClearing, setIsClearing] = useState(false);
   const [clearedSuccess, setClearedSuccess] = useState(false);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handleClear = async () => {
     setIsClearing(true);
     await onClear({
@@ -41,6 +52,10 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cleardata-modal-title"
+      onClick={onClose}
       style={{
         position: 'fixed',
         top: 0,
@@ -56,6 +71,7 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
     >
       <div
         className="glass animate-fade-in"
+        onClick={(e) => e.stopPropagation()}
         style={{
           width: '440px',
           borderRadius: 'var(--radius-lg)',
@@ -67,9 +83,9 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Trash2 size={20} style={{ color: 'var(--accent-red)' }} />
-            <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Clear Browsing Data</h3>
+            <h3 id="cleardata-modal-title" style={{ fontSize: '16px', fontWeight: 600 }}>Clear Browsing Data</h3>
           </div>
-          <button onClick={onClose} style={{ color: 'var(--text-muted)', padding: '2px' }}>
+          <button onClick={onClose} style={{ color: 'var(--text-muted)', padding: '2px' }} aria-label="Close dialog">
             <X size={16} />
           </button>
         </div>
