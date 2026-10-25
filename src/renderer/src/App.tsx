@@ -31,12 +31,26 @@ import {
   PrivacyShieldStats,
   ShortcutItem,
   Tab,
+  TabGroup,
 } from '@shared/types';
+import {
+  createTabGroup,
+  assignTabToGroup,
+  toggleGroupCollapse,
+} from '@shared/tabGroupUtils';
 import { DEFAULT_SETTINGS, NEW_TAB_URL } from '@shared/constants';
 import { isInternalUrl } from '@shared/validation';
 
 export const App: React.FC = () => {
   const [tabs, setTabs] = useState<Tab[]>([]);
+  const [tabGroups, setTabGroups] = useState<TabGroup[]>(() => {
+    try {
+      const saved = localStorage.getItem('nova_tab_groups');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [activeTabId, setActiveTabId] = useState<string>('');
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -178,6 +192,43 @@ export const App: React.FC = () => {
       }
     });
   }, [api, tabs]);
+
+  const handleCreateGroup = useCallback((tabId: string, title?: string, color?: string) => {
+    const newGroup = createTabGroup(title || 'New Group', color);
+    setTabGroups((prev) => {
+      const next = [...prev, newGroup];
+      try {
+        localStorage.setItem('nova_tab_groups', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    setTabs((prev) => assignTabToGroup(prev, tabId, newGroup.id));
+  }, []);
+
+  const handleToggleGroupCollapse = useCallback((groupId: string) => {
+    setTabGroups((prev) => {
+      const next = toggleGroupCollapse(prev, groupId);
+      try {
+        localStorage.setItem('nova_tab_groups', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const handleAssignTabToGroup = useCallback((tabId: string, groupId?: string) => {
+    setTabs((prev) => assignTabToGroup(prev, tabId, groupId));
+  }, []);
+
+  const handleDeleteGroup = useCallback((groupId: string) => {
+    setTabGroups((prev) => {
+      const next = prev.filter((g) => g.id !== groupId);
+      try {
+        localStorage.setItem('nova_tab_groups', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    setTabs((prev) => prev.map((t) => (t.groupId === groupId ? { ...t, groupId: undefined } : t)));
+  }, []);
 
   const handleNavigate = useCallback((url: string) => {
     if (activeTabId) {
@@ -501,6 +552,7 @@ export const App: React.FC = () => {
         tabs={tabs}
         activeTabId={activeTabId}
         isMaximized={isMaximized}
+        groups={tabGroups}
         onSelectTab={handleSelectTab}
         onCloseTab={handleCloseTab}
         onNewTab={handleNewTab}
@@ -508,6 +560,10 @@ export const App: React.FC = () => {
         onTogglePinTab={handleTogglePinTab}
         onDuplicateTab={handleDuplicateTab}
         onCloseOtherTabs={handleCloseOtherTabs}
+        onToggleGroupCollapse={handleToggleGroupCollapse}
+        onCreateGroup={handleCreateGroup}
+        onAssignTabToGroup={handleAssignTabToGroup}
+        onDeleteGroup={handleDeleteGroup}
         onMinimize={() => api?.minimize()}
         onMaximize={() => api?.maximize()}
         onCloseWindow={() => api?.closeWindow()}

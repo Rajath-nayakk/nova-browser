@@ -9,6 +9,13 @@ export interface TlsSecurityDetails {
   isExpired: boolean;
 }
 
+export interface TabGroup {
+  id: string;
+  title: string;
+  color: string;
+  isCollapsed?: boolean;
+}
+
 export interface Tab {
   id: string;
   url: string;
@@ -27,6 +34,7 @@ export interface Tab {
   isPrivate?: boolean;
   isPinned?: boolean;
   isSuspended?: boolean;
+  groupId?: string;
 }
 
 export interface PersistedTabSession {
@@ -36,7 +44,9 @@ export interface PersistedTabSession {
     title: string;
     favicon?: string;
     isPinned?: boolean;
+    groupId?: string;
   }[];
+  groups?: TabGroup[];
   activeTabId: string;
   savedAt: number;
 }

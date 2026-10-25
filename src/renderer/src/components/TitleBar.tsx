@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Minus, Square, X, Plus, Volume2, VolumeX, Shield, Lock, Pin, Copy, Moon } from 'lucide-react';
-import { Tab } from '@shared/types';
+import { Minus, Square, X, Plus, Volume2, VolumeX, Shield, Lock, Pin, Copy, Moon, FolderPlus, FolderMinus, ChevronRight, ChevronDown } from 'lucide-react';
+import { Tab, TabGroup } from '@shared/types';
 
 interface TitleBarProps {
   tabs: Tab[];
   activeTabId: string;
   isMaximized: boolean;
+  groups?: TabGroup[];
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
   onNewTab: () => void;
@@ -13,6 +14,10 @@ interface TitleBarProps {
   onTogglePinTab?: (id: string) => void;
   onDuplicateTab?: (id: string) => void;
   onCloseOtherTabs?: (id: string) => void;
+  onToggleGroupCollapse?: (groupId: string) => void;
+  onCreateGroup?: (tabId: string, title?: string, color?: string) => void;
+  onAssignTabToGroup?: (tabId: string, groupId?: string) => void;
+  onDeleteGroup?: (groupId: string) => void;
   onMinimize: () => void;
   onMaximize: () => void;
   onCloseWindow: () => void;
@@ -22,6 +27,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   tabs,
   activeTabId,
   isMaximized,
+  groups = [],
   onSelectTab,
   onCloseTab,
   onNewTab,
@@ -29,6 +35,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onTogglePinTab,
   onDuplicateTab,
   onCloseOtherTabs,
+  onToggleGroupCollapse,
+  onCreateGroup,
+  onAssignTabToGroup,
+  onDeleteGroup,
   onMinimize,
   onMaximize,
   onCloseWindow,
@@ -126,13 +136,86 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         }}
         className="no-drag"
       >
-        {tabs.map((tab) => {
+        {tabs.map((tab, index) => {
           const isActive = tab.id === activeTabId;
           const isPinned = tab.isPinned;
+          const group = groups?.find((g) => g.id === tab.groupId);
+          const isCollapsed = group?.isCollapsed;
+          const isFirstInGroup = group && tabs.findIndex((t) => t.groupId === group.id) === index;
+          const memberCount = group ? tabs.filter((t) => t.groupId === group.id).length : 0;
+
+          if (isCollapsed && !isActive) {
+            if (isFirstInGroup) {
+              return (
+                <div
+                  key={`group_${group.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleGroupCollapse?.(group.id);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '3px 8px',
+                    height: '26px',
+                    borderRadius: '6px',
+                    background: `${group.color}20`,
+                    border: `1px solid ${group.color}60`,
+                    color: group.color,
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginRight: '4px',
+                    userSelect: 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title={`${group.title} (${memberCount} tabs) - Click to expand`}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: group.color }} />
+                  <span>{group.title}</span>
+                  <ChevronRight size={12} />
+                  <span style={{ fontSize: '10px', opacity: 0.8 }}>({memberCount})</span>
+                </div>
+              );
+            }
+            return null;
+          }
+
           return (
-            <div
-              key={tab.id}
-              onClick={() => onSelectTab(tab.id)}
+            <React.Fragment key={tab.id}>
+              {isFirstInGroup && (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleGroupCollapse?.(group.id);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '3px 8px',
+                    height: '26px',
+                    borderRadius: '6px',
+                    background: `${group.color}20`,
+                    border: `1px solid ${group.color}60`,
+                    color: group.color,
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginRight: '4px',
+                    userSelect: 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title={`${group.title} (${memberCount} tabs) - Click to collapse`}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: group.color }} />
+                  <span>{group.title}</span>
+                  <ChevronDown size={12} />
+                </div>
+              )}
+              <div
+                onClick={() => onSelectTab(tab.id)}
               onContextMenu={(e) => {
                 e.preventDefault();
                 setContextMenu({ tabId: tab.id, x: e.clientX, y: e.clientY });
@@ -157,6 +240,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                   : '2px solid transparent',
                 borderLeft: isActive ? '1px solid var(--border-color)' : '1px solid transparent',
                 borderRight: isActive ? '1px solid var(--border-color)' : '1px solid transparent',
+                borderBottom: group ? `2px solid ${group.color}` : 'none',
                 cursor: 'pointer',
                 position: 'relative',
                 opacity: tab.isSuspended && !isActive ? 0.72 : 1,
@@ -326,8 +410,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 </button>
               )}
             </div>
-          );
-        })}
+          </React.Fragment>
+        );
+      })}
 
         {/* New Tab Button */}
         <button
@@ -532,6 +617,80 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                   >
                     <Moon size={13} />
                     {targetTab.isSuspended ? 'Awaken tab' : 'Suspend tab (free RAM)'}
+                  </button>
+                )}
+
+                <div style={{ height: '1px', background: 'var(--border-color)', margin: '2px 0' }} />
+
+                <button
+                  onClick={() => {
+                    const groupTitle = window.prompt('Enter name for new tab group:', 'Workspace');
+                    if (groupTitle && groupTitle.trim()) {
+                      onCreateGroup?.(targetTab.id, groupTitle.trim());
+                    }
+                    setContextMenu(null);
+                  }}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: '12px',
+                    borderRadius: 'var(--radius-xs)',
+                    justifyContent: 'flex-start',
+                    gap: '8px',
+                    color: 'var(--text-main)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <FolderPlus size={13} className="text-purple-400" />
+                  Add to new group...
+                </button>
+
+                {groups.length > 0 && (
+                  <>
+                    {groups.map((g) => (
+                      <button
+                        key={g.id}
+                        onClick={() => {
+                          onAssignTabToGroup?.(targetTab.id, g.id);
+                          setContextMenu(null);
+                        }}
+                        style={{
+                          padding: '6px 10px',
+                          fontSize: '12px',
+                          borderRadius: 'var(--radius-xs)',
+                          justifyContent: 'flex-start',
+                          gap: '8px',
+                          color: g.color,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: g.color }} />
+                        Move to "{g.title}"
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {targetTab.groupId && (
+                  <button
+                    onClick={() => {
+                      onAssignTabToGroup?.(targetTab.id, undefined);
+                      setContextMenu(null);
+                    }}
+                    style={{
+                      padding: '6px 10px',
+                      fontSize: '12px',
+                      borderRadius: 'var(--radius-xs)',
+                      justifyContent: 'flex-start',
+                      gap: '8px',
+                      color: 'var(--text-muted)',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <FolderMinus size={13} />
+                    Remove from group
                   </button>
                 )}
 

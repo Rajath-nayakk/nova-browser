@@ -67,9 +67,9 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M10.2**: Add Tor circuit health monitor and connection indicator in Network Settings.
 
 ### Milestone 11: Tab Grouping & Multi-Tab Workspace Organization
-- [ ] **M11.1**: Define tab grouping data models (`TabGroup`, `groupId`, `color`, `isCollapsed`) in shared types.
-- [ ] **M11.2**: Implement tab group creation, naming, and color assignment via tab context menu.
-- [ ] **M11.3**: Add group expand/collapse animation in TitleBar tab strip to declutter heavy workflows.
+- [x] **M11.1**: Define tab grouping data models (`TabGroup`, `groupId`, `color`, `isCollapsed`) in shared types.
+- [x] **M11.2**: Implement tab group creation, naming, and color assignment via tab context menu.
+- [x] **M11.3**: Add group expand/collapse animation in TitleBar tab strip to declutter heavy workflows.
 
 ### Milestone 12: Offline Omnibox Search Suggestions & Keyword Engines
 - [ ] **M12.1**: Implement local fuzzy search index for matching bookmarks and history titles directly from the address bar.
