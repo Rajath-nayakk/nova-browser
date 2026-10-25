@@ -54,7 +54,7 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [ ] **M7.3**: Optimize startup cold-boot by lazy-loading non-active tab webviews.
 
 ### Milestone 8: Automation, CI/CD & Cross-Platform Packaging
-- [ ] **M8.1**: Create GitHub Actions CI workflow for automated linting, typechecks, and Vitest runs.
+- [x] **M8.1**: Create GitHub Actions CI workflow for automated linting, typechecks, and Vitest runs.
 - [ ] **M8.2**: Add release packaging automation for Windows portable and NSIS artifacts.
 
 ---
