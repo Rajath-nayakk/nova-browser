@@ -548,6 +548,12 @@ export const App: React.FC = () => {
         onOpenVault={() => handleNavigate('nova://vault')}
         onOpenShortcuts={() => setShowShortcutsModal(true)}
         onOpenLogs={() => handleNavigate('nova://logs')}
+        profiles={settings.profiles}
+        activeProfileId={settings.activeProfileId}
+        onSwitchProfile={async (profId) => {
+          const s = await api?.switchProfile(profId);
+          if (s) setSettings(s);
+        }}
         theme={settings.theme}
         onToggleTheme={async () => {
           const next = settings.theme === 'dark' ? 'light' : 'dark';

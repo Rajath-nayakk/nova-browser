@@ -38,7 +38,7 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 ### Milestone 5: Privacy Controls, Profiles & Vault
 - [x] **M5.1**: Add per-site permission manager panel in Settings (`nova://settings` -> Permissions).
 - [x] **M5.2**: Implement automatic cookie & cache clearing on window exit (configurable in Privacy Settings).
-- [ ] **M5.3**: Add custom profile avatar icons and color theme accents for multi-profile isolation.
+- [x] **M5.3**: Add custom profile avatar icons and color theme accents for multi-profile isolation.
 - [x] **M5.4**: Add clipboard auto-clear timer (30 seconds) when copying sensitive credentials in NOVA Vault.
 - [x] **M5.5**: Add encrypted vault backup export and import (`.novavault` format with master password).
 

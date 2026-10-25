@@ -10,12 +10,13 @@ import {
   MoreVertical,
   ZoomIn,
 } from 'lucide-react';
-import { Bookmark, DownloadItem, HistoryItem, PrivacyShieldStats, Tab } from '@shared/types';
+import { Bookmark, BrowserProfile, DownloadItem, HistoryItem, PrivacyShieldStats, Tab } from '@shared/types';
 import { AddressBar } from './AddressBar';
 import { PrivacyShieldPopup } from './PrivacyShieldPopup';
 import { DownloadsPopup } from './DownloadsPopup';
 import { MainMenu } from './MainMenu';
 import { BlockedElementsModal } from './BlockedElementsModal';
+import { ProfileSwitcherPopup } from './ProfileSwitcherPopup';
 
 interface NavbarProps {
   activeTab?: Tab;
@@ -52,6 +53,9 @@ interface NavbarProps {
   onOpenVault?: () => void;
   onOpenShortcuts?: () => void;
   onOpenLogs?: () => void;
+  profiles?: BrowserProfile[];
+  activeProfileId?: string;
+  onSwitchProfile?: (profileId: string) => void;
   theme: string;
   onToggleTheme: () => void;
 }
@@ -91,6 +95,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenVault,
   onOpenShortcuts,
   onOpenLogs,
+  profiles,
+  activeProfileId,
+  onSwitchProfile,
   theme,
   onToggleTheme,
 }) => {
@@ -98,6 +105,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showDownloadsPopup, setShowDownloadsPopup] = useState(false);
   const [showMainMenu, setShowMainMenu] = useState(false);
   const [showBlockedInspector, setShowBlockedInspector] = useState(false);
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
+
+  const activeProfile = (profiles || []).find((p) => p.id === activeProfileId) || profiles?.[0];
 
   const canGoBack = activeTab?.canGoBack || false;
   const canGoForward = activeTab?.canGoForward || false;
@@ -285,12 +295,52 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </button>
 
+        {/* Identity Profile Quick Switcher Button */}
+        {activeProfile && (
+          <button
+            onClick={() => {
+              setShowProfilePopup(!showProfilePopup);
+              setShowMainMenu(false);
+              setShowShieldPopup(false);
+              setShowDownloadsPopup(false);
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '3px 8px',
+              borderRadius: '16px',
+              background: 'var(--bg-surface-elevated)',
+              border: `1px solid ${activeProfile.color}70`,
+              color: 'var(--text-main)',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+            title={`Active Profile: ${activeProfile.name} (Click to switch)`}
+          >
+            <span style={{ fontSize: '13px' }}>{activeProfile.icon}</span>
+            <span style={{ fontWeight: 600, maxWidth: '75px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {activeProfile.name}
+            </span>
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: activeProfile.color,
+                flexShrink: 0,
+              }}
+            />
+          </button>
+        )}
+
         {/* Main Menu Button */}
         <button
           onClick={() => {
             setShowMainMenu(!showMainMenu);
             setShowShieldPopup(false);
             setShowDownloadsPopup(false);
+            setShowProfilePopup(false);
           }}
           style={{
             width: '30px',
@@ -321,6 +371,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         onClose={() => setShowBlockedInspector(false)}
         tabId={activeTab?.id}
       />
+
+      {showProfilePopup && profiles && (
+        <ProfileSwitcherPopup
+          profiles={profiles}
+          activeProfileId={activeProfileId || 'personal'}
+          onSwitchProfile={(id) => onSwitchProfile?.(id)}
+          onManageProfiles={() => onNavigate('nova://settings')}
+          onClose={() => setShowProfilePopup(false)}
+        />
+      )}
 
 
       {showDownloadsPopup && (

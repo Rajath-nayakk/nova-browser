@@ -25,9 +25,20 @@ import {
   RefreshCw,
   ExternalLink,
   ShieldAlert,
+  Plus,
+  Palette,
+  Edit3,
+  X,
 } from 'lucide-react';
-import { BrowserSettings } from '@shared/types';
+import { BrowserProfile, BrowserSettings } from '@shared/types';
 import { SEARCH_ENGINES } from '@shared/constants';
+import {
+  AVAILABLE_PROFILE_AVATARS,
+  AVAILABLE_PROFILE_COLORS,
+  createCustomProfile,
+  updateProfile,
+  deleteProfile,
+} from '@shared/profileUtils';
 import { NovaLogo } from '../components/NovaLogo';
 
 interface SettingsViewProps {
@@ -52,6 +63,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [updatingThreats, setUpdatingThreats] = useState(false);
   const [threatUpdateMsg, setThreatUpdateMsg] = useState<string | null>(null);
   const [customRulesText, setCustomRulesText] = useState((settings.customFilterRules || []).join('\n'));
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [newProfileName, setNewProfileName] = useState('');
+  const [newProfileAvatar, setNewProfileAvatar] = useState('👤');
+  const [newProfileColor, setNewProfileColor] = useState('#8b5cf6');
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [editProfileName, setEditProfileName] = useState('');
+  const [editProfileAvatar, setEditProfileAvatar] = useState('👤');
+  const [editProfileColor, setEditProfileColor] = useState('#8b5cf6');
 
   const showSaved = () => {
     setSavedFeedback(true);
@@ -894,35 +913,301 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {/* TAB: IDENTITY PROFILES */}
           {activeTab === 'profiles' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-white">Identity Profiles</h2>
-              <p className="text-xs text-gray-400">Keep work, personal, shopping, and research tabs completely isolated.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Identity Profiles</h2>
+                  <p className="text-xs text-gray-400">Keep work, personal, shopping, and research tabs completely isolated.</p>
+                </div>
+                {!isCreatingProfile && (
+                  <button
+                    onClick={() => {
+                      setIsCreatingProfile(true);
+                      setEditingProfileId(null);
+                      setNewProfileName('');
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition"
+                  >
+                    <Plus size={14} />
+                    <span>New Profile</span>
+                  </button>
+                )}
+              </div>
 
+              {/* Create Profile Card */}
+              {isCreatingProfile && (
+                <div className="p-5 rounded-2xl bg-[#161926] border border-purple-500/50 space-y-4 shadow-lg shadow-purple-500/10">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold text-white flex items-center gap-2">
+                      <Plus size={16} className="text-purple-400" />
+                      <span>Create New Identity Profile</span>
+                    </div>
+                    <button
+                      onClick={() => setIsCreatingProfile(false)}
+                      className="text-gray-400 hover:text-white text-xs"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-gray-400 block mb-1.5 font-medium">Profile Name</label>
+                    <input
+                      type="text"
+                      value={newProfileName}
+                      onChange={(e) => setNewProfileName(e.target.value)}
+                      placeholder="e.g., Client Work, Crypto, Freelance, Private..."
+                      className="w-full bg-[#0d0f17] border border-gray-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-gray-400 block mb-1.5 font-medium">Avatar Icon</label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {AVAILABLE_PROFILE_AVATARS.map((av) => (
+                        <button
+                          key={av}
+                          type="button"
+                          onClick={() => setNewProfileAvatar(av)}
+                          className={`w-9 h-9 rounded-xl text-lg flex items-center justify-center transition border ${
+                            newProfileAvatar === av
+                              ? 'bg-purple-600/20 border-purple-500 scale-110 shadow-md'
+                              : 'bg-[#0d0f17] border-gray-800 hover:border-gray-700'
+                          }`}
+                        >
+                          {av}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-gray-400 block mb-1.5 font-medium">Theme Color Accent</label>
+                    <div className="flex items-center gap-2.5">
+                      {AVAILABLE_PROFILE_COLORS.map((col) => (
+                        <button
+                          key={col}
+                          type="button"
+                          onClick={() => setNewProfileColor(col)}
+                          style={{ backgroundColor: col }}
+                          className={`w-7 h-7 rounded-full transition border-2 ${
+                            newProfileColor === col
+                              ? 'border-white scale-115 shadow-lg'
+                              : 'border-transparent hover:scale-105'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      onClick={() => setIsCreatingProfile(false)}
+                      className="px-3 py-1.5 rounded-xl text-xs text-gray-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={!newProfileName.trim()}
+                      onClick={() => {
+                        const newProf = createCustomProfile(newProfileName, newProfileAvatar, newProfileColor);
+                        const updated = [...(settings.profiles || []), newProf];
+                        handleUpdate({ profiles: updated });
+                        setIsCreatingProfile(false);
+                        setNewProfileName('');
+                      }}
+                      className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold"
+                    >
+                      Create Profile
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Edit Profile Card */}
+              {editingProfileId && (
+                <div className="p-5 rounded-2xl bg-[#161926] border border-blue-500/50 space-y-4 shadow-lg shadow-blue-500/10">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold text-white flex items-center gap-2">
+                      <Edit3 size={16} className="text-blue-400" />
+                      <span>Customize Profile</span>
+                    </div>
+                    <button
+                      onClick={() => setEditingProfileId(null)}
+                      className="text-gray-400 hover:text-white text-xs"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-gray-400 block mb-1.5 font-medium">Profile Name</label>
+                    <input
+                      type="text"
+                      value={editProfileName}
+                      onChange={(e) => setEditProfileName(e.target.value)}
+                      className="w-full bg-[#0d0f17] border border-gray-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-gray-400 block mb-1.5 font-medium">Avatar Icon</label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {AVAILABLE_PROFILE_AVATARS.map((av) => (
+                        <button
+                          key={av}
+                          type="button"
+                          onClick={() => setEditProfileAvatar(av)}
+                          className={`w-9 h-9 rounded-xl text-lg flex items-center justify-center transition border ${
+                            editProfileAvatar === av
+                              ? 'bg-blue-600/20 border-blue-500 scale-110 shadow-md'
+                              : 'bg-[#0d0f17] border-gray-800 hover:border-gray-700'
+                          }`}
+                        >
+                          {av}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-gray-400 block mb-1.5 font-medium">Theme Color Accent</label>
+                    <div className="flex items-center gap-2.5">
+                      {AVAILABLE_PROFILE_COLORS.map((col) => (
+                        <button
+                          key={col}
+                          type="button"
+                          onClick={() => setEditProfileColor(col)}
+                          style={{ backgroundColor: col }}
+                          className={`w-7 h-7 rounded-full transition border-2 ${
+                            editProfileColor === col
+                              ? 'border-white scale-115 shadow-lg'
+                              : 'border-transparent hover:scale-105'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      onClick={() => setEditingProfileId(null)}
+                      className="px-3 py-1.5 rounded-xl text-xs text-gray-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={!editProfileName.trim()}
+                      onClick={() => {
+                        const updated = updateProfile(settings.profiles || [], editingProfileId, {
+                          name: editProfileName,
+                          icon: editProfileAvatar,
+                          color: editProfileColor,
+                        });
+                        handleUpdate({ profiles: updated });
+                        setEditingProfileId(null);
+                      }}
+                      className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Profiles Grid */}
               <div className="grid grid-cols-2 gap-4">
                 {(settings.profiles || []).map((prof) => {
                   const isActive = settings.activeProfileId === prof.id;
+                  const canDelete = (settings.profiles || []).length > 1;
+
                   return (
                     <div
                       key={prof.id}
-                      onClick={async () => {
-                        if (window.novaAPI?.switchProfile) {
-                          const updated = await window.novaAPI.switchProfile(prof.id);
-                          onUpdateSettings(updated);
-                        }
-                      }}
-                      className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
+                      style={{ borderLeftColor: prof.color, borderLeftWidth: '4px' }}
+                      className={`p-4 rounded-2xl border transition flex items-center justify-between relative group ${
                         isActive
-                          ? 'bg-purple-600/15 border-purple-500 text-white shadow-lg shadow-purple-600/10'
+                          ? 'bg-[#1a1c2d] border-gray-700 text-white shadow-lg'
                           : 'bg-[#161926] border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{prof.icon}</span>
+                      <div
+                        className="flex items-center gap-3.5 flex-1 cursor-pointer"
+                        onClick={async () => {
+                          if (window.novaAPI?.switchProfile) {
+                            const updated = await window.novaAPI.switchProfile(prof.id);
+                            onUpdateSettings(updated);
+                          }
+                        }}
+                      >
+                        <div
+                          style={{ backgroundColor: `${prof.color}25`, borderColor: prof.color }}
+                          className="w-11 h-11 rounded-xl border flex items-center justify-center text-2xl flex-shrink-0"
+                        >
+                          {prof.icon}
+                        </div>
                         <div>
-                          <div className="font-semibold text-sm text-white">{prof.name}</div>
-                          <div className="text-[11px] text-gray-500">Isolated session partition</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-white">{prof.name}</span>
+                            <span
+                              style={{ backgroundColor: prof.color }}
+                              className="w-2 h-2 rounded-full inline-block"
+                              title={`Accent: ${prof.color}`}
+                            />
+                          </div>
+                          <div className="text-[11px] text-gray-500 font-mono">{prof.partition}</div>
                         </div>
                       </div>
-                      {isActive && <CheckCircle size={16} className="text-purple-400" />}
+
+                      <div className="flex items-center gap-1.5">
+                        {isActive && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold mr-1">
+                            Active
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingProfileId(prof.id);
+                            setIsCreatingProfile(false);
+                            setEditProfileName(prof.name);
+                            setEditProfileAvatar(prof.icon);
+                            setEditProfileColor(prof.color);
+                          }}
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition"
+                          title="Customize profile"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`Delete profile "${prof.name}"?`)) {
+                                const { profiles: remaining, nextActiveId } = deleteProfile(
+                                  settings.profiles || [],
+                                  prof.id,
+                                  settings.activeProfileId
+                                );
+                                handleUpdate({
+                                  profiles: remaining,
+                                  activeProfileId: nextActiveId,
+                                });
+                                if (settings.activeProfileId === prof.id && window.novaAPI?.switchProfile) {
+                                  window.novaAPI.switchProfile(nextActiveId);
+                                }
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-950/20 transition"
+                            title="Delete profile"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
