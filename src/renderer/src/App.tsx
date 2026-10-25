@@ -380,8 +380,8 @@ export const App: React.FC = () => {
           <BookmarksView
             bookmarks={bookmarks}
             onNavigate={handleNavigate}
-            onAddBookmark={async (t, u) => {
-              const b = await api?.addBookmark({ title: t, url: u });
+            onAddBookmark={async (t, u, f) => {
+              const b = await api?.addBookmark({ title: t, url: u, folder: f });
               if (b) setBookmarks((prev) => [b, ...prev]);
             }}
             onRemoveBookmark={async (id) => {
