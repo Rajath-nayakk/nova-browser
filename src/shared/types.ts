@@ -225,3 +225,14 @@ export interface DiagnosticLogEntry {
   message: string;
   details?: Record<string, any>;
 }
+
+export interface ReaderArticle {
+  url: string;
+  title: string;
+  byline?: string;
+  publishedTime?: string;
+  excerpt?: string;
+  content: string;
+  wordCount: number;
+  readingTimeMinutes: number;
+}
