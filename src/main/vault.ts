@@ -142,4 +142,96 @@ export class LocalVaultManager {
     }
     return this.unlockedData.items;
   }
+
+  /**
+   * Exports an encrypted portable .novavault backup string protected with a backup password
+   */
+  public exportBackup(password: string): string {
+    if (!this.unlockedData) {
+      throw new Error('Cannot export backup: Vault must be unlocked first.');
+    }
+
+    if (!password || password.length < 6) {
+      throw new Error('Backup password must be at least 6 characters long.');
+    }
+
+    const salt = crypto.randomBytes(32);
+    const iv = crypto.randomBytes(12);
+    const key = this.deriveKey(password, salt);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
+    const payload = Buffer.from(JSON.stringify(this.unlockedData), 'utf-8');
+    const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()]);
+    const tag = cipher.getAuthTag();
+
+    const backupPayload = {
+      format: 'novavault-v1',
+      version: 1,
+      createdAt: Date.now(),
+      itemCount: this.unlockedData.items.length,
+      salt: salt.toString('hex'),
+      iv: iv.toString('hex'),
+      tag: tag.toString('hex'),
+      ciphertext: ciphertext.toString('hex'),
+    };
+
+    return JSON.stringify(backupPayload, null, 2);
+  }
+
+  /**
+   * Decrypts and imports a .novavault backup string, merging items into the active vault
+   */
+  public importBackup(backupJson: string, password: string): { importedCount: number; totalCount: number } {
+    if (!this.unlockedData) {
+      throw new Error('Cannot import backup: Vault must be unlocked first.');
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(backupJson);
+    } catch {
+      throw new Error('Invalid backup file: Not valid JSON.');
+    }
+
+    if (!parsed || parsed.format !== 'novavault-v1' || !parsed.salt || !parsed.iv || !parsed.tag || !parsed.ciphertext) {
+      throw new Error('Unrecognized backup format. Expected a valid novavault-v1 backup.');
+    }
+
+    try {
+      const salt = Buffer.from(parsed.salt, 'hex');
+      const iv = Buffer.from(parsed.iv, 'hex');
+      const tag = Buffer.from(parsed.tag, 'hex');
+      const ciphertext = Buffer.from(parsed.ciphertext, 'hex');
+
+      const key = this.deriveKey(password, salt);
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+      decipher.setAuthTag(tag);
+
+      const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+      const importedData: VaultData = JSON.parse(decrypted.toString('utf-8'));
+
+      if (!Array.isArray(importedData.items)) {
+        throw new Error('Corrupted backup data: items array missing.');
+      }
+
+      // Merge items into current vault, updating existing IDs or appending new items
+      const existingMap = new Map(this.unlockedData.items.map((item) => [item.id, item]));
+      for (const item of importedData.items) {
+        existingMap.set(item.id, item);
+      }
+
+      this.unlockedData.items = Array.from(existingMap.values());
+      this.saveItems(this.unlockedData.items);
+
+      return {
+        importedCount: importedData.items.length,
+        totalCount: this.unlockedData.items.length,
+      };
+    } catch (err: any) {
+      if (err.message && err.message.includes('Corrupted backup')) {
+        throw err;
+      }
+      throw new Error('Failed to decrypt backup. Incorrect backup password or corrupted file.');
+    }
+  }
 }

@@ -119,6 +119,10 @@ const novaAPI = {
     ipcRenderer.invoke('vault:get-items'),
   vaultSaveItems: (items: any[]): Promise<boolean> =>
     ipcRenderer.invoke('vault:save-items', { items }),
+  vaultExportBackup: (password: string): Promise<string> =>
+    ipcRenderer.invoke('vault:export-backup', { password }),
+  vaultImportBackup: (backupJson: string, password: string): Promise<{ importedCount: number; totalCount: number }> =>
+    ipcRenderer.invoke('vault:import-backup', { backupJson, password }),
 
   // Permissions
   respondToPermission: (

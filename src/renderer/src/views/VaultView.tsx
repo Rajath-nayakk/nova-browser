@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Unlock, Key, Plus, Trash2, Eye, EyeOff, ShieldCheck, Copy, Check } from 'lucide-react';
+import { Lock, Unlock, Key, Plus, Trash2, Eye, EyeOff, ShieldCheck, Copy, Check, Download, Upload, FileText } from 'lucide-react';
 import { NovaLogo } from '../components/NovaLogo';
 import { VaultItem } from '@shared/types';
 
@@ -11,6 +11,14 @@ export const VaultView: React.FC = () => {
   const [error, setError] = useState('');
   const [items, setItems] = useState<VaultItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [backupPassword, setBackupPassword] = useState('');
+  const [exportError, setExportError] = useState('');
+  const [importError, setImportError] = useState('');
+  const [importSuccess, setImportSuccess] = useState('');
+  const [importJsonContent, setImportJsonContent] = useState('');
+  const [importFileName, setImportFileName] = useState('');
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemCategory, setNewItemCategory] = useState<'note' | 'credential' | 'code' | 'bookmark'>('note');
   const [newItemContent, setNewItemContent] = useState('');
@@ -124,6 +132,71 @@ export const VaultView: React.FC = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleExportBackup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setExportError('');
+    if (backupPassword.length < 6) {
+      setExportError('Backup password must be at least 6 characters long.');
+      return;
+    }
+    try {
+      const backupJson = await window.novaAPI.vaultExportBackup(backupPassword);
+      const blob = new Blob([backupJson], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nova-vault-backup-${new Date().toISOString().split('T')[0]}.novavault`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setShowExportModal(false);
+      setBackupPassword('');
+    } catch (err: any) {
+      setExportError(err.message || 'Failed to export backup.');
+    }
+  };
+
+  const handleImportFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setImportJsonContent((event.target?.result as string) || '');
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportBackup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setImportError('');
+    setImportSuccess('');
+    if (!importJsonContent) {
+      setImportError('Please select a valid .novavault backup file.');
+      return;
+    }
+    if (!backupPassword) {
+      setImportError('Please enter the password used when creating this backup.');
+      return;
+    }
+    try {
+      const res = await window.novaAPI.vaultImportBackup(importJsonContent, backupPassword);
+      const loaded = await window.novaAPI.vaultGetItems();
+      setItems(loaded);
+      setImportSuccess(`Successfully imported ${res.importedCount} items!`);
+      setTimeout(() => {
+        setShowImportModal(false);
+        setBackupPassword('');
+        setImportJsonContent('');
+        setImportFileName('');
+        setImportSuccess('');
+      }, 1200);
+    } catch (err: any) {
+      setImportError(err.message || 'Failed to import backup.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0d0f17] text-white p-8 select-none animate-fadeIn">
       <div className="max-w-4xl mx-auto">
@@ -145,7 +218,34 @@ export const VaultView: React.FC = () => {
           </div>
 
           {isUnlocked && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setExportError('');
+                  setBackupPassword('');
+                  setShowExportModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 bg-purple-900/40 hover:bg-purple-800/60 border border-purple-700/50 text-purple-200 rounded-xl text-xs font-medium transition active:scale-95"
+                title="Export encrypted vault backup (.novavault)"
+              >
+                <Download size={14} />
+                Export
+              </button>
+              <button
+                onClick={() => {
+                  setImportError('');
+                  setImportSuccess('');
+                  setBackupPassword('');
+                  setImportJsonContent('');
+                  setImportFileName('');
+                  setShowImportModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-700/50 text-indigo-200 rounded-xl text-xs font-medium transition active:scale-95"
+                title="Import encrypted vault backup"
+              >
+                <Upload size={14} />
+                Import
+              </button>
               <button
                 onClick={() => setShowAddModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-medium transition shadow-lg shadow-purple-600/20 active:scale-95"
@@ -358,6 +458,138 @@ export const VaultView: React.FC = () => {
                     className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-medium shadow-lg shadow-purple-600/30"
                   >
                     Encrypt & Save
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Export Encrypted Backup Modal */}
+        {showExportModal && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-[#161926] border border-gray-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2.5 bg-purple-500/15 border border-purple-500/30 rounded-xl text-purple-400">
+                  <Download size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Export Encrypted Backup</h3>
+                  <p className="text-xs text-gray-400">Create an authenticated AES-256-GCM portable archive.</p>
+                </div>
+              </div>
+
+              {exportError && (
+                <div className="p-2.5 mb-4 bg-red-500/15 border border-red-500/30 rounded-xl text-xs text-red-400 text-center">
+                  {exportError}
+                </div>
+              )}
+
+              <form onSubmit={handleExportBackup} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Backup Protection Password</label>
+                  <input
+                    type="password"
+                    value={backupPassword}
+                    onChange={(e) => setBackupPassword(e.target.value)}
+                    placeholder="Enter password (min 6 chars)..."
+                    className="w-full bg-[#0b0d14] border border-gray-800 focus:border-purple-500 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 outline-none"
+                    required
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Your backup will be encrypted with this password. You will need it to restore your vault.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowExportModal(false)}
+                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-medium shadow-lg shadow-purple-600/30 flex items-center gap-1.5"
+                  >
+                    <Download size={14} />
+                    Download Backup
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Import Backup Modal */}
+        {showImportModal && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-[#161926] border border-gray-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2.5 bg-indigo-500/15 border border-indigo-500/30 rounded-xl text-indigo-400">
+                  <Upload size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Import Encrypted Backup</h3>
+                  <p className="text-xs text-gray-400">Restore items from a .novavault backup file.</p>
+                </div>
+              </div>
+
+              {importError && (
+                <div className="p-2.5 mb-4 bg-red-500/15 border border-red-500/30 rounded-xl text-xs text-red-400 text-center">
+                  {importError}
+                </div>
+              )}
+
+              {importSuccess && (
+                <div className="p-2.5 mb-4 bg-green-500/15 border border-green-500/30 rounded-xl text-xs text-green-400 text-center flex items-center justify-center gap-1.5">
+                  <Check size={14} />
+                  {importSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleImportBackup} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Select Backup File</label>
+                  <label className="flex items-center justify-center gap-2 p-3 border border-dashed border-gray-700 hover:border-indigo-500 rounded-xl cursor-pointer bg-[#0b0d14] text-xs text-gray-400 transition">
+                    <FileText size={16} />
+                    <span>{importFileName || 'Choose .novavault or .json backup'}</span>
+                    <input
+                      type="file"
+                      accept=".novavault,.json"
+                      onChange={handleImportFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Backup Password</label>
+                  <input
+                    type="password"
+                    value={backupPassword}
+                    onChange={(e) => setBackupPassword(e.target.value)}
+                    placeholder="Enter backup encryption password..."
+                    className="w-full bg-[#0b0d14] border border-gray-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowImportModal(false)}
+                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-medium shadow-lg shadow-indigo-600/30 flex items-center gap-1.5"
+                  >
+                    <Upload size={14} />
+                    Decrypt & Restore
                   </button>
                 </div>
               </form>

@@ -40,7 +40,7 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [ ] **M5.2**: Implement automatic cookie & cache clearing on window exit (configurable in Privacy Settings).
 - [ ] **M5.3**: Add custom profile avatar icons and color theme accents for multi-profile isolation.
 - [ ] **M5.4**: Add clipboard auto-clear timer (30 seconds) when copying sensitive credentials in NOVA Vault.
-- [ ] **M5.5**: Add encrypted vault backup export and import (`.novavault` format with master password).
+- [x] **M5.5**: Add encrypted vault backup export and import (`.novavault` format with master password).
 
 ### Milestone 6: Accessibility, Shortcuts & Error Handling
 - [x] **M6.1**: Implement interactive Keyboard Shortcuts Cheat Sheet modal (`Ctrl+/` or `?`).

@@ -1132,6 +1132,22 @@ ipcMain.handle('vault:save-items', (event, { items }) => {
   return vault ? vault.saveItems(items) : false;
 });
 
+ipcMain.handle('vault:export-backup', (event, { password }) => {
+  assertAuthorizedSender(event);
+  if (!vault) {
+    throw new Error('Vault is not available.');
+  }
+  return vault.exportBackup(password);
+});
+
+ipcMain.handle('vault:import-backup', (event, { backupJson, password }) => {
+  assertAuthorizedSender(event);
+  if (!vault) {
+    throw new Error('Vault is not available.');
+  }
+  return vault.importBackup(backupJson, password);
+});
+
 ipcMain.handle('privacy:clear-data', async (event, options: ClearDataOptions) => {
   assertAuthorizedSender(event);
   if (options.history) {
