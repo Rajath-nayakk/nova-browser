@@ -149,6 +149,8 @@ export const LogsView: React.FC<LogsViewProps> = ({ onNavigate }) => {
         return { label: 'Permissions', color: '#38bdf8' };
       case 'session':
         return { label: 'Session Isolation', color: '#f59e0b' };
+      case 'security':
+        return { label: 'Security Audit', color: '#06b6d4' };
       case 'system':
       default:
         return { label: 'System', color: 'var(--text-muted)' };
@@ -429,6 +431,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ onNavigate }) => {
                 <option value="all">All Categories</option>
                 <option value="sentinel">Sentinel Threats</option>
                 <option value="shield">Privacy Shield</option>
+                <option value="security">Security & CSP</option>
                 <option value="tls">TLS Certificates</option>
                 <option value="permission">Permissions</option>
                 <option value="session">Session</option>

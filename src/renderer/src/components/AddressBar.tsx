@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Lock, AlertTriangle, Star, Search, Globe, Shield, X, Copy, Check, BookOpen, Compass } from 'lucide-react';
-import { Bookmark, HistoryItem, Tab, TlsSecurityDetails } from '@shared/types';
+import { Bookmark, HistoryItem, Tab, TlsSecurityDetails, SecurityHeadersAuditResult } from '@shared/types';
 import { extractDomain, isHttpsUrl, isInternalUrl, stripTrackingParameters } from '@shared/validation';
 import { generateOmniboxSuggestions, parseKeywordSearch, OmniboxSuggestion } from '@shared/searchSuggestions';
 import { useToast } from './Toast';
@@ -27,6 +27,7 @@ export const AddressBar: React.FC<AddressBarProps> = ({
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const [showSecurityInfo, setShowSecurityInfo] = useState(false);
   const [localTlsDetails, setLocalTlsDetails] = useState<TlsSecurityDetails | null>(null);
+  const [securityAudit, setSecurityAudit] = useState<SecurityHeadersAuditResult | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const { showToast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,13 +40,24 @@ export const AddressBar: React.FC<AddressBarProps> = ({
   const tls = activeTab?.securityDetails || localTlsDetails;
 
   useEffect(() => {
-    if (showSecurityInfo && activeTab && isHttpsUrl(activeTab.url) && !activeTab.securityDetails) {
-      if (window.novaAPI?.getTlsSecurityDetails) {
+    if (showSecurityInfo && activeTab && isHttpsUrl(activeTab.url)) {
+      if (!activeTab.securityDetails && window.novaAPI?.getTlsSecurityDetails) {
         window.novaAPI
           .getTlsSecurityDetails(activeTab.url)
           .then((details) => {
             if (details) {
               setLocalTlsDetails(details);
+            }
+          })
+          .catch(() => {});
+      }
+
+      if (window.novaAPI?.getSecurityHeadersAudit) {
+        window.novaAPI
+          .getSecurityHeadersAudit(activeTab.url)
+          .then((audit) => {
+            if (audit) {
+              setSecurityAudit(audit);
             }
           })
           .catch(() => {});
@@ -401,6 +413,43 @@ export const AddressBar: React.FC<AddressBarProps> = ({
                       {tls ? `${tls.daysRemaining} days remaining` : 'Verified (Valid TLS)'}
                     </span>
                   </div>
+
+                  {securityAudit && (
+                    <>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginTop: '4px',
+                          paddingTop: '6px',
+                          borderTop: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                      >
+                        <span style={{ color: 'var(--text-muted)' }}>CSP Policy Grade:</span>
+                        <span
+                          style={{
+                            color:
+                              securityAudit.csp.grade === 'A+' || securityAudit.csp.grade === 'A'
+                                ? 'var(--accent-green)'
+                                : securityAudit.csp.grade === 'B' || securityAudit.csp.grade === 'C'
+                                ? '#f59e0b'
+                                : 'var(--accent-red)',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Grade {securityAudit.csp.grade} ({securityAudit.csp.score}/100)
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Transport & MIME:</span>
+                        <span style={{ color: 'var(--text-main)', fontSize: '10px' }}>
+                          {securityAudit.hsts.present ? 'HSTS Enforced' : 'No HSTS'} •{' '}
+                          {securityAudit.xContentTypeOptions.isNoSniff ? 'nosniff' : 'standard'}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </>
             ) : (

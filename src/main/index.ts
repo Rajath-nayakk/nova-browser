@@ -30,6 +30,9 @@ import {
   clearOriginStorage,
   enforceCookieLifetimePolicy,
 } from './cookieManager';
+import { auditSecurityHeaders, SecurityHeadersAuditResult } from '../shared/cspAuditor';
+
+const securityAuditCache = new Map<string, SecurityHeadersAuditResult>();
 import {
   ClearDataOptions,
   DownloadItem,
@@ -277,6 +280,35 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
       if (reqDomain && refDomain && reqDomain !== refDomain && !reqDomain.endsWith(`.${refDomain}`) && !refDomain.endsWith(`.${reqDomain}`)) {
         delete responseHeaders['set-cookie'];
         delete responseHeaders['Set-Cookie'];
+      }
+    }
+
+    // Security Header & Content Security Policy (CSP) Audit for main frame navigations
+    if (details.resourceType === 'mainFrame' && details.url.startsWith('http')) {
+      try {
+        const audit = auditSecurityHeaders(details.url, responseHeaders);
+        const origin = extractOrigin(details.url);
+        securityAuditCache.set(details.url, audit);
+        if (origin) {
+          securityAuditCache.set(origin, audit);
+        }
+
+        if (audit.score < 50 || audit.csp.hasWildcardHost) {
+          diagnosticLogger.log(
+            'warning',
+            'security',
+            `Security Audit: ${audit.domain} received Grade ${audit.grade} (${audit.score}/100)`,
+            {
+              url: details.url,
+              score: audit.score,
+              grade: audit.grade,
+              hasCsp: audit.csp.status !== 'absent',
+              findings: audit.findings.map((f) => f.message),
+            }
+          );
+        }
+      } catch (err) {
+        console.warn('Failed to audit security headers for:', details.url, err);
       }
     }
 
@@ -1580,6 +1612,20 @@ ipcMain.handle('storage:enforce-cookie-cap', async (event) => {
   }
   return res;
 });
+
+// Security Header & Content Security Policy Auditor
+ipcMain.handle(
+  'security:audit-url',
+  async (event, { url }: { url: string }): Promise<SecurityHeadersAuditResult | null> => {
+    assertAuthorizedSender(event);
+    if (!url) return null;
+    const origin = extractOrigin(url);
+    const cached = securityAuditCache.get(url) || (origin ? securityAuditCache.get(origin) : null);
+    if (cached) return cached;
+
+    return auditSecurityHeaders(url, {});
+  }
+);
 
 // NOVA Encrypted Vault
 ipcMain.handle('vault:is-initialized', (event) => {

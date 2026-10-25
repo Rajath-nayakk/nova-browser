@@ -14,6 +14,7 @@ import {
   DiagnosticLogEntry,
   ReaderArticle,
   OriginStorageDetails,
+  SecurityHeadersAuditResult,
 } from '../shared/types';
 
 const novaAPI = {
@@ -174,6 +175,10 @@ const novaAPI = {
     ipcRenderer.invoke('storage:clear-site', { url }),
   enforceCookieLifetimeCap: (): Promise<{ cappedCount: number; inspectedCount: number }> =>
     ipcRenderer.invoke('storage:enforce-cookie-cap'),
+
+  // Content Security Policy & Network Security Audit
+  getSecurityHeadersAudit: (url: string): Promise<SecurityHeadersAuditResult | null> =>
+    ipcRenderer.invoke('security:audit-url', { url }),
 
   // Permissions
   respondToPermission: (

@@ -226,7 +226,7 @@ export interface BlockedRequestEvent {
 }
 
 export type DiagnosticLevel = 'info' | 'warning' | 'error' | 'threat';
-export type DiagnosticCategory = 'shield' | 'sentinel' | 'tls' | 'permission' | 'session' | 'system';
+export type DiagnosticCategory = 'shield' | 'sentinel' | 'tls' | 'permission' | 'session' | 'system' | 'security';
 
 export interface DiagnosticLogEntry {
   id: string;
@@ -264,3 +264,10 @@ export interface OriginStorageDetails {
   cookieCount: number;
   cookies: CookieSummaryItem[];
 }
+
+export type {
+  CspSeverity,
+  CspFinding,
+  CspAuditResult,
+  SecurityHeadersAuditResult,
+} from './cspAuditor';

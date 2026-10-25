@@ -88,6 +88,7 @@ export class DiagnosticLogger {
         permission: 0,
         session: 0,
         system: 0,
+        security: 0,
       },
     };
 

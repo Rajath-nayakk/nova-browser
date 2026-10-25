@@ -28,16 +28,18 @@ describe('DiagnosticLogger (Security Event Logs)', () => {
     logger.log('info', 'shield', 'Tracker request blocked');
     logger.log('warning', 'tls', 'Expired certificate detected');
     logger.log('info', 'permission', 'Camera access allowed');
+    logger.log('warning', 'security', 'Missing CSP header on sensitive page');
 
     const summary = logger.getSummary();
-    expect(summary.total).toBe(5);
+    expect(summary.total).toBe(6);
     expect(summary.byLevel.threat).toBe(1);
     expect(summary.byLevel.info).toBe(3);
-    expect(summary.byLevel.warning).toBe(1);
+    expect(summary.byLevel.warning).toBe(2);
     expect(summary.byCategory.sentinel).toBe(1);
     expect(summary.byCategory.shield).toBe(2);
     expect(summary.byCategory.tls).toBe(1);
     expect(summary.byCategory.permission).toBe(1);
+    expect(summary.byCategory.security).toBe(1);
   });
 
   it('filters logs by category, level, and keyword search', () => {

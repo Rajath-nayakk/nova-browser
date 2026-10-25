@@ -84,8 +84,8 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M14.2**: Implement automated tracker cookie auto-expiry policy (expire third-party cookies after 24 hours).
 
 ### Milestone 15: Developer Tools & Local Security Audit Suite
-- [ ] **M15.1**: Add Content Security Policy (CSP) violation auditor in diagnostic log viewer.
-- [ ] **M15.2**: Add per-tab resource network payload size and security inspector in Shield details.
+- [x] **M15.1**: Add Content Security Policy (CSP) violation auditor in diagnostic log viewer.
+- [x] **M15.2**: Add per-tab resource network payload size and security inspector in Shield details.
 
 ### Milestone 16: Comprehensive Architecture & Security Documentation
 - [ ] **M16.1**: Create detailed IPC security boundaries and threat model documentation (`docs/SECURITY.md`).
