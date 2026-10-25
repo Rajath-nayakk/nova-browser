@@ -88,8 +88,40 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M15.2**: Add per-tab resource network payload size and security inspector in Shield details.
 
 ### Milestone 16: Comprehensive Architecture & Security Documentation
-- [ ] **M16.1**: Create detailed IPC security boundaries and threat model documentation (`docs/SECURITY.md`).
-- [ ] **M16.2**: Create comprehensive developer onboarding and architecture guide (`docs/ARCHITECTURE.md`).
+- [x] **M16.1**: Create detailed IPC security boundaries and threat model documentation (`docs/SECURITY.md`).
+- [x] **M16.2**: Create comprehensive developer onboarding and architecture guide (`docs/ARCHITECTURE.md`).
+
+### Milestone 17: User-Agent Randomization & Anti-Fingerprinting Presets
+- [ ] **M17.1**: Implement client-side User-Agent profile selector (Windows, macOS, Linux, Mobile) with version cycling in `userAgentManager.ts`.
+- [ ] **M17.2**: Add Canvas and AudioContext noise injector to thwart passive browser fingerprinting.
+
+### Milestone 18: Download Threat Intelligence Feed & Malware Hash Database
+- [ ] **M18.1**: Implement local SHA-256 blocklist of known malicious executables and ransomware hashes.
+- [ ] **M18.2**: Integrate real-time hash verification into DownloadsView with quarantine action.
+
+### Milestone 19: Per-Origin Appearance & Site-Specific Zoom Persistence
+- [ ] **M19.1**: Persist per-origin zoom levels in `settings.json` and automatically apply on tab navigation.
+- [ ] **M19.2**: Add site-specific dark mode forced inversion toggle for reading comfort.
+
+### Milestone 20: Secure Credential Auto-Fill & Vault Form Completion
+- [ ] **M20.1**: Build heuristic password and username input field detector in guest webContents.
+- [ ] **M20.2**: Implement secure one-click credential auto-fill via encrypted IPC exchange with NOVA Vault.
+
+### Milestone 21: Full-Text History Search & Query Token Indexing
+- [ ] **M21.1**: Build reverse-index query tokenizer for instant multi-term history searching.
+- [ ] **M21.2**: Add visit frequency and time-spent domain analytics dashboard in HistoryView.
+
+### Milestone 22: Certificate Pinning & HSTS Preload Engine
+- [ ] **M22.1**: Bundle curated list of top HSTS preload domains for automatic HTTPS upgrade before initial connection.
+- [ ] **M22.2**: Implement Public Key Pinning (HPKP) verification for high-security domains.
+
+### Milestone 23: Tab Sleep Scheduling & Battery Saver Optimization
+- [ ] **M23.1**: Add automated timer-based tab discarding for battery saving on laptops.
+- [ ] **M23.2**: Add Energy Saver mode toggle that reduces background animation frame rates.
+
+### Milestone 24: Enterprise Proxy & PAC Script Auto-Config Engine
+- [ ] **M24.1**: Implement Proxy Auto-Configuration (PAC) script parsing and HTTP/SOCKS proxy chaining.
+- [ ] **M24.2**: Add per-profile proxy assignment for enterprise and privacy workflows.
 
 ---
 *Roadmap updated continuously as features are designed, implemented, tested, and committed.*
