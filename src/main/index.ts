@@ -26,6 +26,11 @@ import { checkTorSocksConnectivity } from './torService';
 import { isOnionDomain } from '../shared/torUtils';
 import { getCrashRecoveryInfo } from '../shared/crashRecovery';
 import {
+  getOriginStorageDetails,
+  clearOriginStorage,
+  enforceCookieLifetimePolicy,
+} from './cookieManager';
+import {
   ClearDataOptions,
   DownloadItem,
   PermissionRequest,
@@ -1550,6 +1555,30 @@ ipcMain.handle('tor:check-connection', async (event, { port }) => {
     diagnosticLogger.log('warning', 'system', `Tor SOCKS proxy check failed on port ${targetPort}: ${status.error}`);
   }
   return status;
+});
+
+// Granular Site Storage & Cookie Inspector
+ipcMain.handle('storage:get-site-details', async (event, { url }) => {
+  assertAuthorizedSender(event);
+  return getOriginStorageDetails(session.defaultSession, url);
+});
+
+ipcMain.handle('storage:clear-site', async (event, { url }) => {
+  assertAuthorizedSender(event);
+  const success = await clearOriginStorage(session.defaultSession, url);
+  if (success) {
+    diagnosticLogger.log('info', 'session', `Cleared all cookies and storage for origin: ${url}`);
+  }
+  return success;
+});
+
+ipcMain.handle('storage:enforce-cookie-cap', async (event) => {
+  assertAuthorizedSender(event);
+  const res = await enforceCookieLifetimePolicy(session.defaultSession);
+  if (res.cappedCount > 0) {
+    diagnosticLogger.log('info', 'session', `Capped expiration on ${res.cappedCount} persistent tracker cookies (out of ${res.inspectedCount} total).`);
+  }
+  return res;
 });
 
 // NOVA Encrypted Vault

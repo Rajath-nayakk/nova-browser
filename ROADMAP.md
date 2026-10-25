@@ -80,8 +80,8 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M13.2**: Implement automatic GPU / renderer process crash detection with graceful tab recovery prompts.
 
 ### Milestone 14: Cookie Auto-Expiry & Granular Site Storage Inspector
-- [ ] **M14.1**: Build site storage inspector showing exact cookies, localStorage, and IndexedDB usage per origin.
-- [ ] **M14.2**: Implement automated tracker cookie auto-expiry policy (expire third-party cookies after 24 hours).
+- [x] **M14.1**: Build site storage inspector showing exact cookies, localStorage, and IndexedDB usage per origin.
+- [x] **M14.2**: Implement automated tracker cookie auto-expiry policy (expire third-party cookies after 24 hours).
 
 ### Milestone 15: Developer Tools & Local Security Audit Suite
 - [ ] **M15.1**: Add Content Security Policy (CSP) violation auditor in diagnostic log viewer.

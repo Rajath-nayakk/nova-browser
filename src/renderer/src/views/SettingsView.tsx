@@ -74,6 +74,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [testingTor, setTestingTor] = useState(false);
   const [torStatus, setTorStatus] = useState<{ connected: boolean; latencyMs?: number; error?: string } | null>(null);
   const [showRestartPrompt, setShowRestartPrompt] = useState(false);
+  const [cappingCookies, setCappingCookies] = useState(false);
+  const [cookieCapMsg, setCookieCapMsg] = useState<string | null>(null);
 
   const showSaved = () => {
     setSavedFeedback(true);
@@ -124,6 +126,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setTorStatus({ connected: false, error: err?.message || 'Failed to check connection' });
     } finally {
       setTestingTor(false);
+    }
+  };
+
+  const handleEnforceCookieCap = async () => {
+    if (!window.novaAPI?.enforceCookieLifetimeCap) return;
+    setCappingCookies(true);
+    setCookieCapMsg(null);
+    try {
+      const res = await window.novaAPI.enforceCookieLifetimeCap();
+      setCookieCapMsg(
+        `Audited ${res.inspectedCount} stored cookie(s). Capped ${res.cappedCount} long-term tracking cookie(s) to 24 hours.`
+      );
+    } catch {
+      setCookieCapMsg('Failed to enforce cookie lifetime policy.');
+    } finally {
+      setCappingCookies(false);
     }
   };
 
@@ -809,6 +827,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 >
                   Clear Data...
                 </button>
+              </div>
+
+              {/* 24-Hour Tracker Cookie Auto-Expiry */}
+              <div className="bg-[#161926] border border-gray-800 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-white">24-Hour Tracker Cookie Auto-Expiry</div>
+                    <div className="text-xs text-gray-400">
+                      Caps persistent third-party cookies and tracking identifiers to 24 hours to prevent cross-site profiling.
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleEnforceCookieCap}
+                    disabled={cappingCookies}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-medium transition"
+                  >
+                    <RefreshCw size={13} className={cappingCookies ? 'animate-spin' : ''} />
+                    <span>{cappingCookies ? 'Capping...' : 'Enforce Expiry Now'}</span>
+                  </button>
+                </div>
+
+                {cookieCapMsg && (
+                  <div className="p-3 bg-cyan-950/30 border border-cyan-800/40 rounded-xl text-xs text-cyan-300">
+                    {cookieCapMsg}
+                  </div>
+                )}
               </div>
 
               {/* Site Permissions Manager */}

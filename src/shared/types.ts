@@ -247,3 +247,20 @@ export interface ReaderArticle {
   wordCount: number;
   readingTimeMinutes: number;
 }
+
+export interface CookieSummaryItem {
+  name: string;
+  domain: string;
+  path: string;
+  secure: boolean;
+  httpOnly: boolean;
+  expirationDate?: number;
+  isSession: boolean;
+}
+
+export interface OriginStorageDetails {
+  origin: string;
+  domain: string;
+  cookieCount: number;
+  cookies: CookieSummaryItem[];
+}

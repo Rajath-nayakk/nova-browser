@@ -13,6 +13,7 @@ import {
   BlockedRequestEvent,
   DiagnosticLogEntry,
   ReaderArticle,
+  OriginStorageDetails,
 } from '../shared/types';
 
 const novaAPI = {
@@ -165,6 +166,14 @@ const novaAPI = {
   // System & Lifecycle
   relaunchApp: (): Promise<void> =>
     ipcRenderer.invoke('app:relaunch'),
+
+  // Site Storage & Granular Cookie Inspector
+  getSiteStorageDetails: (url: string): Promise<OriginStorageDetails> =>
+    ipcRenderer.invoke('storage:get-site-details', { url }),
+  clearSiteStorage: (url: string): Promise<boolean> =>
+    ipcRenderer.invoke('storage:clear-site', { url }),
+  enforceCookieLifetimeCap: (): Promise<{ cappedCount: number; inspectedCount: number }> =>
+    ipcRenderer.invoke('storage:enforce-cookie-cap'),
 
   // Permissions
   respondToPermission: (
