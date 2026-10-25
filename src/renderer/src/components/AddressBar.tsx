@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, AlertTriangle, Star, Search, Globe, Shield, X, Copy, Check } from 'lucide-react';
+import { Lock, AlertTriangle, Star, Search, Globe, Shield, X, Copy, Check, BookOpen } from 'lucide-react';
 import { Bookmark, HistoryItem, Tab, TlsSecurityDetails } from '@shared/types';
 import { extractDomain, isHttpsUrl, isInternalUrl, stripTrackingParameters } from '@shared/validation';
 import { useToast } from './Toast';
@@ -240,6 +240,34 @@ export const AddressBar: React.FC<AddressBarProps> = ({
               aria-label="Copy Clean URL"
             >
               {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
+            </button>
+          )}
+
+          {/* Reader Mode Toggle Button */}
+          {(!isInternal || currentUrl.startsWith('nova://reader')) && currentUrl && (
+            <button
+              type="button"
+              onClick={() => {
+                if (currentUrl.startsWith('nova://reader')) {
+                  try {
+                    const target = new URL(currentUrl).searchParams.get('url');
+                    if (target) onNavigate(target);
+                  } catch {
+                    onNavigate('nova://newtab');
+                  }
+                } else {
+                  onNavigate(`nova://reader?url=${encodeURIComponent(currentUrl)}`);
+                }
+              }}
+              style={{
+                color: currentUrl.startsWith('nova://reader') ? 'var(--accent)' : 'var(--text-muted)',
+                padding: '4px',
+                borderRadius: '4px',
+              }}
+              title={currentUrl.startsWith('nova://reader') ? 'Exit Reader Mode' : 'Toggle Distraction-Free Reader Mode'}
+              aria-label="Reader Mode"
+            >
+              <BookOpen size={15} />
             </button>
           )}
         </div>

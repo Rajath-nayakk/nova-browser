@@ -21,6 +21,7 @@ import { shouldSuspendTab } from './tabSuspension';
 import { shieldLogger } from './shieldLogger';
 import { diagnosticLogger } from './diagnosticLogger';
 import { buildSessionSnapshot, restoreTabState } from './sessionRestore';
+import { extractReaderArticle } from '../shared/readerExtractor';
 import {
   ClearDataOptions,
   DownloadItem,
@@ -1447,6 +1448,48 @@ ipcMain.handle('profile:switch', (event, { profileId }) => {
   const tab = createTab(NEW_TAB_URL);
   switchTab(tab.id);
   return updated;
+});
+
+// Distraction-Free Reader Mode Article Extraction
+ipcMain.handle('reader:extract', async (event, { targetUrl }) => {
+  assertAuthorizedSender(event);
+  let html = '';
+  let url = targetUrl || '';
+
+  if (!url && activeTabId) {
+    const managed = tabs.get(activeTabId);
+    if (managed && managed.view && !managed.tab.isSuspended && !isInternalUrl(managed.tab.url)) {
+      url = managed.tab.url;
+      try {
+        html = await managed.view.webContents.executeJavaScript('document.documentElement.outerHTML', true);
+      } catch (err) {
+        console.warn('Failed to extract outerHTML from active view:', err);
+      }
+    }
+  }
+
+  if (url && !html && isSafeNavigationUrl(url)) {
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+      });
+      if (resp.ok) {
+        html = await resp.text();
+      }
+    } catch (err) {
+      console.warn(`Failed to fetch article content for ${url}:`, err);
+    }
+  }
+
+  if (!html) {
+    return null;
+  }
+
+  return extractReaderArticle(html, url);
 });
 
 // NOVA Encrypted Vault

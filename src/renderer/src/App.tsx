@@ -16,6 +16,7 @@ import { WarningView } from './views/WarningView';
 import { ErrorView } from './views/ErrorView';
 import { VaultView } from './views/VaultView';
 import { LogsView } from './views/LogsView';
+import { ReaderView } from './views/ReaderView';
 import { LinkLensModal } from './components/LinkLensModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
 
@@ -463,6 +464,8 @@ export const App: React.FC = () => {
         return <VaultView />;
       case 'logs':
         return <LogsView onNavigate={handleNavigate} />;
+      case 'reader':
+        return <ReaderView url={activeTab?.url || ''} onNavigate={handleNavigate} />;
       case 'newtab':
       default:
         return (

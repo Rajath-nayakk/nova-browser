@@ -59,8 +59,8 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 
 ### Milestone 9: Distraction-Free Reader Mode & Article Extraction
 - [x] **M9.1**: Implement article extraction heuristic engine (`src/shared/readerExtractor.ts`) stripping ads, sidebars, and popups.
-- [ ] **M9.2**: Build internal Reader Mode view (`nova://reader`) with customizable font sizes, serif/sans-serif typography, and sepia/dark themes.
-- [ ] **M9.3**: Add AddressBar quick "Toggle Reader Mode" action button when an article payload is detected.
+- [x] **M9.2**: Build internal Reader Mode view (`nova://reader`) with customizable font sizes, serif/sans-serif typography, and sepia/dark themes.
+- [x] **M9.3**: Add AddressBar quick "Toggle Reader Mode" action button when an article payload is detected.
 
 ### Milestone 10: Tor Routing Circuit Status & Onion Domain Dispatcher
 - [ ] **M10.1**: Implement `.onion` domain validation and automatic proxy routing dispatcher.

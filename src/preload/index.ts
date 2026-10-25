@@ -12,6 +12,7 @@ import {
   Tab,
   BlockedRequestEvent,
   DiagnosticLogEntry,
+  ReaderArticle,
 } from '../shared/types';
 
 const novaAPI = {
@@ -152,6 +153,10 @@ const novaAPI = {
     ipcRenderer.invoke('vault:export-backup', { password }),
   vaultImportBackup: (backupJson: string, password: string): Promise<{ importedCount: number; totalCount: number }> =>
     ipcRenderer.invoke('vault:import-backup', { backupJson, password }),
+
+  // Reader Mode
+  extractReaderArticle: (targetUrl?: string): Promise<ReaderArticle | null> =>
+    ipcRenderer.invoke('reader:extract', { targetUrl }),
 
   // Permissions
   respondToPermission: (
