@@ -24,8 +24,8 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 
 ### Milestone 3: Downloads Safety & Management
 - [ ] **M3.1**: Implement download pause, resume, and cancel controls via Electron IPC.
-- [ ] **M3.2**: Add SHA-256 file checksum calculation and verification in Downloads view (`nova://downloads`).
-- [ ] **M3.3**: Add dangerous download warning prompt with explicit user acknowledgement before opening executable files.
+- [x] **M3.2**: Add SHA-256 file checksum calculation and verification in Downloads view (`nova://downloads`).
+- [x] **M3.3**: Add dangerous download warning prompt with explicit user acknowledgement before opening executable files.
 - [ ] **M3.4**: Add download speed and estimated time remaining (ETA) calculation.
 
 ### Milestone 4: NOVA Shield & Sentinel Enhancements

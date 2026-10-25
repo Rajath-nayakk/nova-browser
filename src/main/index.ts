@@ -10,6 +10,7 @@ import {
 } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { FilterEngineManager } from './filterEngine';
 import { ThreatProtectionManager } from './threatProtection';
 import { LocalVaultManager } from './vault';
@@ -958,6 +959,44 @@ ipcMain.handle('downloads:open-file', (event, { filePath }) => {
     if (resolved.startsWith(defaultFolder) && fs.existsSync(resolved) && !isExecutableFile(resolved)) {
       shell.openPath(resolved);
     }
+  }
+});
+
+ipcMain.handle('downloads:compute-hash', async (event, { filePath, algorithm = 'sha256' }) => {
+  assertAuthorizedSender(event);
+  const supportedAlgs = ['sha256', 'sha512', 'sha1', 'md5'];
+  const targetAlg = supportedAlgs.includes(algorithm) ? algorithm : 'sha256';
+
+  if (!filePath || typeof filePath !== 'string' || !path.isAbsolute(filePath)) {
+    return { filePath: String(filePath), error: 'Invalid file path' };
+  }
+
+  const resolved = path.resolve(filePath);
+  const defaultFolder = path.resolve(storage.getSettings().downloadPath || app.getPath('downloads'));
+
+  if (!resolved.startsWith(defaultFolder) && !fs.existsSync(resolved)) {
+    return { filePath: resolved, error: 'File access outside download directory is restricted' };
+  }
+
+  if (!fs.existsSync(resolved)) {
+    return { filePath: resolved, error: 'File does not exist on disk' };
+  }
+
+  try {
+    const stats = fs.statSync(resolved);
+    const hash = crypto.createHash(targetAlg);
+    const stream = fs.createReadStream(resolved);
+    for await (const chunk of stream) {
+      hash.update(chunk);
+    }
+    return {
+      filePath: resolved,
+      hash: hash.digest('hex'),
+      algorithm: targetAlg,
+      sizeBytes: stats.size,
+    };
+  } catch (err: any) {
+    return { filePath: resolved, error: err?.message || 'Failed to compute file checksum' };
   }
 });
 

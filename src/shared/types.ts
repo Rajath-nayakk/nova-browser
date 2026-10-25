@@ -44,6 +44,14 @@ export interface DownloadItem {
   speed?: number;
 }
 
+export interface FileChecksumResult {
+  filePath: string;
+  hash?: string;
+  algorithm?: string;
+  sizeBytes?: number;
+  error?: string;
+}
+
 export interface ShortcutItem {
   id: string;
   title: string;

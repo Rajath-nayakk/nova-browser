@@ -4,6 +4,7 @@ import {
   BrowserSettings,
   ClearDataOptions,
   DownloadItem,
+  FileChecksumResult,
   FindInPageResult,
   HistoryItem,
   PermissionRequest,
@@ -72,6 +73,8 @@ const novaAPI = {
     ipcRenderer.invoke('downloads:show-in-folder', { filePath }),
   openDownloadedFile: (filePath: string): Promise<void> =>
     ipcRenderer.invoke('downloads:open-file', { filePath }),
+  computeFileChecksum: (filePath: string, algorithm?: string): Promise<FileChecksumResult> =>
+    ipcRenderer.invoke('downloads:compute-hash', { filePath, algorithm }),
 
   // Settings
   getSettings: (): Promise<BrowserSettings> => ipcRenderer.invoke('settings:get'),

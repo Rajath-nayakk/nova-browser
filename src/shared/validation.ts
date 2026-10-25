@@ -162,6 +162,15 @@ export function isHttpsUrl(urlStr: string): boolean {
   }
 }
 
+export type FileRiskCategory = 'executable' | 'script' | 'archive' | 'document' | 'media' | 'code' | 'safe';
+
+export interface FileRiskAnalysis {
+  category: FileRiskCategory;
+  isDangerous: boolean;
+  extension: string;
+  warning?: string;
+}
+
 /**
  * Checks if a filename or path is potentially an executable or dangerous file
  */
@@ -172,6 +181,49 @@ export function isExecutableFile(filename: string): boolean {
   ];
   const lower = filename.toLowerCase();
   return dangerousExts.some((ext) => lower.endsWith(ext));
+}
+
+/**
+ * Analyzes file security risk based on file extension
+ */
+export function analyzeFileRisk(filename: string): FileRiskAnalysis {
+  const ext = filename.lastIndexOf('.') !== -1 ? filename.slice(filename.lastIndexOf('.')).toLowerCase() : '';
+  const executableExts = ['.exe', '.com', '.scr', '.pif', '.msi'];
+  const scriptExts = ['.bat', '.cmd', '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.ps1', '.psm1', '.reg', '.sh'];
+  const archiveExts = ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.iso', '.dmg'];
+  const documentExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.rtf', '.csv'];
+  const mediaExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.mp4', '.mkv', '.webm', '.mp3', '.wav', '.flac'];
+  const codeExts = ['.ts', '.tsx', '.jsx', '.json', '.html', '.css', '.py', '.cpp', '.c', '.h', '.java', '.go', '.rs'];
+
+  if (executableExts.includes(ext)) {
+    return {
+      category: 'executable',
+      isDangerous: true,
+      extension: ext,
+      warning: 'Executables can execute native code with full user permissions. Verify integrity before running.',
+    };
+  }
+  if (scriptExts.includes(ext)) {
+    return {
+      category: 'script',
+      isDangerous: true,
+      extension: ext,
+      warning: 'Script files can execute command line instructions. Exercise caution.',
+    };
+  }
+  if (archiveExts.includes(ext)) {
+    return { category: 'archive', isDangerous: false, extension: ext };
+  }
+  if (documentExts.includes(ext)) {
+    return { category: 'document', isDangerous: false, extension: ext };
+  }
+  if (mediaExts.includes(ext)) {
+    return { category: 'media', isDangerous: false, extension: ext };
+  }
+  if (codeExts.includes(ext)) {
+    return { category: 'code', isDangerous: false, extension: ext };
+  }
+  return { category: 'safe', isDangerous: false, extension: ext };
 }
 
 /**
