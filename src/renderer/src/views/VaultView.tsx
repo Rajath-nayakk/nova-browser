@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Lock, Unlock, Key, Plus, Trash2, Eye, EyeOff, ShieldCheck, Copy, Check, Download, Upload, FileText } from 'lucide-react';
 import { NovaLogo } from '../components/NovaLogo';
 import { VaultItem } from '@shared/types';
@@ -24,9 +24,18 @@ export const VaultView: React.FC = () => {
   const [newItemContent, setNewItemContent] = useState('');
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [clipboardCountdown, setClipboardCountdown] = useState<number | null>(null);
+  const [activeCopiedId, setActiveCopiedId] = useState<string | null>(null);
+  const lastCopiedSecretRef = useRef<string>('');
+  const clearTimeoutRef = useRef<any>(null);
+  const countdownIntervalRef = useRef<any>(null);
 
   useEffect(() => {
     checkStatus();
+    return () => {
+      if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
   }, []);
 
   const checkStatus = async () => {
@@ -126,9 +135,44 @@ export const VaultView: React.FC = () => {
     setRevealedIds(next);
   };
 
+  const clearClipboardNow = async () => {
+    if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    try {
+      const current = await navigator.clipboard.readText().catch(() => '');
+      if (current === lastCopiedSecretRef.current) {
+        await navigator.clipboard.writeText('');
+      }
+    } catch {
+      navigator.clipboard.writeText('').catch(() => {});
+    }
+    setClipboardCountdown(null);
+    setActiveCopiedId(null);
+  };
+
   const copyToClipboard = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
+    lastCopiedSecretRef.current = text;
     setCopiedId(id);
+    setActiveCopiedId(id);
+    setClipboardCountdown(30);
+
+    if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+
+    countdownIntervalRef.current = setInterval(() => {
+      setClipboardCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    clearTimeoutRef.current = setTimeout(() => {
+      clearClipboardNow();
+    }, 30000);
+
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -330,6 +374,28 @@ export const VaultView: React.FC = () => {
         {/* Unlocked Vault Contents */}
         {isUnlocked && (
           <div>
+            {/* Clipboard Auto-Clear Countdown Banner */}
+            {clipboardCountdown !== null && (
+              <div className="mb-5 p-3.5 bg-purple-950/40 border border-purple-800/50 rounded-2xl flex items-center justify-between animate-fadeIn shadow-lg">
+                <div className="flex items-center gap-2.5 text-xs text-purple-200">
+                  <ShieldCheck size={16} className="text-purple-400 shrink-0" />
+                  <span>
+                    Sensitive secret copied. Clipboard will automatically clear in{' '}
+                    <strong className="font-mono text-white text-xs bg-purple-900/60 px-1.5 py-0.5 rounded border border-purple-700/50">
+                      {clipboardCountdown}s
+                    </strong>{' '}
+                    to prevent clipboard snooping.
+                  </span>
+                </div>
+                <button
+                  onClick={clearClipboardNow}
+                  className="px-3 py-1 bg-purple-800/60 hover:bg-purple-700 text-purple-200 rounded-xl text-[11px] font-semibold transition active:scale-95 shrink-0"
+                >
+                  Clear Now
+                </button>
+              </div>
+            )}
+
             {items.length === 0 ? (
               <div className="text-center py-16 bg-[#161926]/40 border border-dashed border-gray-800 rounded-2xl">
                 <ShieldCheck size={40} className="mx-auto text-gray-600 mb-3" />
@@ -349,6 +415,7 @@ export const VaultView: React.FC = () => {
                 {items.map((item) => {
                   const isRevealed = revealedIds.has(item.id);
                   const isCopied = copiedId === item.id;
+                  const isCountingDown = activeCopiedId === item.id && clipboardCountdown !== null;
                   return (
                     <div
                       key={item.id}
@@ -368,7 +435,14 @@ export const VaultView: React.FC = () => {
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-800/50">
-                        <span>{new Date(item.updatedAt).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-2">
+                          <span>{new Date(item.updatedAt).toLocaleDateString()}</span>
+                          {isCountingDown && (
+                            <span className="text-[10px] text-purple-400 font-mono bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-800/40">
+                              clears in {clipboardCountdown}s
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => toggleReveal(item.id)}
@@ -380,7 +454,7 @@ export const VaultView: React.FC = () => {
                           <button
                             onClick={() => copyToClipboard(item.id, item.content)}
                             className="p-1.5 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition"
-                            title="Copy to clipboard"
+                            title="Copy to clipboard (auto-clears in 30s)"
                           >
                             {isCopied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
                           </button>
