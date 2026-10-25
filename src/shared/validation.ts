@@ -261,8 +261,45 @@ export const TARGET_BRAND_DOMAINS = [
   'google.com', 'accounts.google.com', 'paypal.com', 'apple.com', 'microsoft.com',
   'amazon.com', 'netflix.com', 'chase.com', 'bankofamerica.com', 'wellsfargo.com',
   'binance.com', 'coinbase.com', 'github.com', 'facebook.com', 'instagram.com',
-  'twitter.com', 'x.com', 'linkedin.com', 'steamcommunity.com', 'discord.com'
+  'twitter.com', 'x.com', 'linkedin.com', 'steamcommunity.com', 'discord.com',
+  'dropbox.com', 'spotify.com', 'reddit.com'
 ];
+
+/**
+ * Calculates Levenshtein edit distance between two strings
+ */
+export function getLevenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  const m = a.length;
+  const n = b.length;
+  let prevRow = new Array(n + 1);
+  let currRow = new Array(n + 1);
+
+  for (let j = 0; j <= n; j++) {
+    prevRow[j] = j;
+  }
+
+  for (let i = 1; i <= m; i++) {
+    currRow[0] = i;
+    const aChar = a.charCodeAt(i - 1);
+    for (let j = 1; j <= n; j++) {
+      const cost = aChar === b.charCodeAt(j - 1) ? 0 : 1;
+      currRow[j] = Math.min(
+        currRow[j - 1] + 1,
+        prevRow[j] + 1,
+        prevRow[j - 1] + cost
+      );
+    }
+    const temp = prevRow;
+    prevRow = currRow;
+    currRow = temp;
+  }
+
+  return prevRow[n];
+}
 
 /**
  * Checks for IDN homograph / punycode lookalike domain attacks or deceptive typosquatting
@@ -302,19 +339,67 @@ export function isLookalikeDomain(domain: string): { isLookalike: boolean; targe
   }
 
   // 4. Character substitution typosquatting (e.g., paypa1, g00gle, rnicrosoft)
-  const canonical = lower
-    .replace(/0/g, 'o')
-    .replace(/1/g, 'l')
-    .replace(/rn/g, 'm')
-    .replace(/vv/g, 'w');
+  const parts = lower.split('.');
+  if (parts.length >= 2) {
+    const domainLabel = parts[parts.length - 2];
+    const canonicalLabel = domainLabel
+      .replace(/0/g, 'o')
+      .replace(/1/g, 'l')
+      .replace(/rn/g, 'm')
+      .replace(/vv/g, 'w');
 
-  for (const brand of TARGET_BRAND_DOMAINS) {
-    if (canonical.includes(brand) && !lower.endsWith(`.${brand}`) && lower !== brand) {
-      return {
-        isLookalike: true,
-        targetBrand: brand,
-        reason: `Character substitution visually resembling "${brand}".`,
-      };
+    for (const brand of TARGET_BRAND_DOMAINS) {
+      const brandParts = brand.split('.');
+      const brandLabel = brandParts[0];
+
+      if (lower === brand || lower.endsWith(`.${brand}`)) {
+        continue;
+      }
+
+      if (canonicalLabel === brandLabel && domainLabel !== brandLabel) {
+        return {
+          isLookalike: true,
+          targetBrand: brand,
+          reason: `Character substitution visually resembling "${brand}".`,
+        };
+      }
+    }
+  }
+
+  // 5. Levenshtein Distance Typosquatting Analysis against Top Brands
+  if (parts.length >= 2) {
+    const domainLabel = parts[parts.length - 2];
+
+    for (const brand of TARGET_BRAND_DOMAINS) {
+      const brandParts = brand.split('.');
+      const brandLabel = brandParts[0];
+
+      // Skip if domain belongs to the authentic brand
+      if (lower === brand || lower.endsWith(`.${brand}`)) {
+        continue;
+      }
+
+      if (domainLabel !== brandLabel && Math.abs(domainLabel.length - brandLabel.length) <= 2) {
+        const dist = getLevenshteinDistance(domainLabel, brandLabel);
+
+        // Edit distance 1 is almost universally an intentional typosquatting probe
+        if (dist === 1) {
+          return {
+            isLookalike: true,
+            targetBrand: brand,
+            reason: `Typosquatting candidate (edit distance 1) closely targeting legitimate brand "${brand}".`,
+          };
+        }
+
+        // Edit distance 2 on longer brand names (e.g., 8+ letters)
+        if (dist === 2 && brandLabel.length >= 8) {
+          return {
+            isLookalike: true,
+            targetBrand: brand,
+            reason: `Typosquatting candidate (edit distance 2) closely targeting legitimate brand "${brand}".`,
+          };
+        }
+      }
     }
   }
 
