@@ -201,3 +201,15 @@ export interface BlockedRequestEvent {
   resourceType: string;
   timestamp: number;
 }
+
+export type DiagnosticLevel = 'info' | 'warning' | 'error' | 'threat';
+export type DiagnosticCategory = 'shield' | 'sentinel' | 'tls' | 'permission' | 'session' | 'system';
+
+export interface DiagnosticLogEntry {
+  id: string;
+  timestamp: number;
+  level: DiagnosticLevel;
+  category: DiagnosticCategory;
+  message: string;
+  details?: Record<string, any>;
+}

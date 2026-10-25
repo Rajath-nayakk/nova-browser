@@ -11,6 +11,7 @@ import {
   PrivacyShieldStats,
   Tab,
   BlockedRequestEvent,
+  DiagnosticLogEntry,
 } from '../shared/types';
 
 const novaAPI = {
@@ -116,6 +117,17 @@ const novaAPI = {
     ipcRenderer.invoke('link:inspect', { url }),
   getTlsSecurityDetails: (url: string): Promise<any> =>
     ipcRenderer.invoke('security:get-tls-details', { url }),
+
+  // Diagnostics & Security Logs
+  getDiagnosticLogs: (filters?: { category?: string; level?: string; search?: string; limit?: number }): Promise<DiagnosticLogEntry[]> =>
+    ipcRenderer.invoke('diagnostics:get-logs', filters),
+  getDiagnosticSummary: (): Promise<{ total: number; byLevel: Record<string, number>; byCategory: Record<string, number> }> =>
+    ipcRenderer.invoke('diagnostics:get-summary'),
+  clearDiagnosticLogs: (): Promise<boolean> =>
+    ipcRenderer.invoke('diagnostics:clear-logs'),
+  exportDiagnostics: (): Promise<string> =>
+    ipcRenderer.invoke('diagnostics:export'),
+
 
   // Profiles
   switchProfile: (profileId: string): Promise<BrowserSettings> =>

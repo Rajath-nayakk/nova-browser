@@ -19,6 +19,7 @@ import { getTlsSecurityDetails } from './tlsInspector';
 import { performSessionDataCleanup } from './sessionCleanup';
 import { shouldSuspendTab } from './tabSuspension';
 import { shieldLogger } from './shieldLogger';
+import { diagnosticLogger } from './diagnosticLogger';
 import {
   ClearDataOptions,
   DownloadItem,
@@ -167,6 +168,10 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
           resourceType: details.resourceType,
         });
         mainWindow?.webContents.send('shield:event-blocked', threatEv);
+        diagnosticLogger.log('threat', 'sentinel', `Phishing or malware connection blocked: ${details.url}`, {
+          url: details.url,
+          resourceType: details.resourceType,
+        });
         callback({ cancel: true });
         return;
       }
@@ -213,6 +218,11 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
           resourceType: details.resourceType,
         });
         mainWindow?.webContents.send('shield:event-blocked', blockedEv);
+        diagnosticLogger.log('info', 'shield', `Shield blocked request: ${details.url}`, {
+          url: details.url,
+          category: match.category,
+          rule: match.filter,
+        });
 
         callback({ cancel: true });
         return;
@@ -1333,8 +1343,49 @@ ipcMain.handle('link:inspect', (event, { url }) => {
 // TLS / SSL Certificate & Cipher Inspector
 ipcMain.handle('security:get-tls-details', async (event, { url }) => {
   assertAuthorizedSender(event);
-  return await getTlsSecurityDetails(url || '');
+  const details = await getTlsSecurityDetails(url || '');
+  if (details) {
+    if (details.isExpired) {
+      diagnosticLogger.log('warning', 'tls', `TLS Security Warning: Certificate expired for ${url}`, details);
+    } else {
+      diagnosticLogger.log('info', 'tls', `TLS Certificate Verified for ${details.subjectName || url} (${details.cipherSuite || details.protocol})`);
+    }
+  }
+  return details;
 });
+
+// Diagnostic Logs & Security Audit Console
+ipcMain.handle('diagnostics:get-logs', (event, filters) => {
+  assertAuthorizedSender(event);
+  return diagnosticLogger.getLogs(filters);
+});
+
+ipcMain.handle('diagnostics:get-summary', (event) => {
+  assertAuthorizedSender(event);
+  return diagnosticLogger.getSummary();
+});
+
+ipcMain.handle('diagnostics:clear-logs', (event) => {
+  assertAuthorizedSender(event);
+  diagnosticLogger.clearLogs();
+  return true;
+});
+
+ipcMain.handle('diagnostics:export', (event) => {
+  assertAuthorizedSender(event);
+  const sysInfo = {
+    version: app.getVersion(),
+    platform: process.platform,
+    arch: process.arch,
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    node: process.versions.node,
+    uptimeSec: Math.round(process.uptime()),
+    memoryUsageMB: Math.round(process.memoryUsage().heapUsed / (1024 * 1024)),
+  };
+  return diagnosticLogger.exportDiagnostics(sysInfo);
+});
+
 
 // Identity Profiles
 ipcMain.handle('profile:switch', (event, { profileId }) => {

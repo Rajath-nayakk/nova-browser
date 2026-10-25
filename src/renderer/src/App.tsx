@@ -15,6 +15,7 @@ import { SettingsView } from './views/SettingsView';
 import { WarningView } from './views/WarningView';
 import { ErrorView } from './views/ErrorView';
 import { VaultView } from './views/VaultView';
+import { LogsView } from './views/LogsView';
 import { LinkLensModal } from './components/LinkLensModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
 
@@ -460,6 +461,8 @@ export const App: React.FC = () => {
         );
       case 'vault':
         return <VaultView />;
+      case 'logs':
+        return <LogsView onNavigate={handleNavigate} />;
       case 'newtab':
       default:
         return (
@@ -544,6 +547,7 @@ export const App: React.FC = () => {
         onOpenLinkLens={() => setShowLinkLensModal(true)}
         onOpenVault={() => handleNavigate('nova://vault')}
         onOpenShortcuts={() => setShowShortcutsModal(true)}
+        onOpenLogs={() => handleNavigate('nova://logs')}
         theme={settings.theme}
         onToggleTheme={async () => {
           const next = settings.theme === 'dark' ? 'light' : 'dark';

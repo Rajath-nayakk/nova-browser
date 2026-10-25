@@ -19,6 +19,7 @@ import {
   Lock,
   Sparkles,
   Keyboard,
+  Activity,
 } from 'lucide-react';
 
 interface MainMenuProps {
@@ -40,6 +41,7 @@ interface MainMenuProps {
   onOpenVault?: () => void;
   onOpenLinkLens?: () => void;
   onOpenShortcuts?: () => void;
+  onOpenLogs?: () => void;
   theme: string;
   onToggleTheme: () => void;
 }
@@ -63,6 +65,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   onOpenVault,
   onOpenLinkLens,
   onOpenShortcuts,
+  onOpenLogs,
   theme,
   onToggleTheme,
 }) => {
@@ -185,6 +188,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       icon: <Sparkles size={15} style={{ color: '#38bdf8' }} />,
       label: 'Link Lens Inspector',
       onClick: onOpenLinkLens || onOpenSettings,
+    },
+    {
+      icon: <Activity size={15} style={{ color: '#10b981' }} />,
+      label: 'Security & Event Logs',
+      onClick: () => {
+        onClose();
+        onOpenLogs?.();
+      },
     },
     { divider: true },
     {
