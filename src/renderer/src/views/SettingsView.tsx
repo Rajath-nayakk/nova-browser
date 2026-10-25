@@ -71,6 +71,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [editProfileName, setEditProfileName] = useState('');
   const [editProfileAvatar, setEditProfileAvatar] = useState('👤');
   const [editProfileColor, setEditProfileColor] = useState('#8b5cf6');
+  const [testingTor, setTestingTor] = useState(false);
+  const [torStatus, setTorStatus] = useState<{ connected: boolean; latencyMs?: number; error?: string } | null>(null);
 
   const showSaved = () => {
     setSavedFeedback(true);
@@ -107,6 +109,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setThreatUpdateMsg('Failed to update threat intelligence.');
     } finally {
       setUpdatingThreats(false);
+    }
+  };
+
+  const handleTestTorConnection = async () => {
+    if (!window.novaAPI?.checkTorConnection) return;
+    setTestingTor(true);
+    setTorStatus(null);
+    try {
+      const res = await window.novaAPI.checkTorConnection(settings.torSocksPort || 9050);
+      setTorStatus(res);
+    } catch (err: any) {
+      setTorStatus({ connected: false, error: err?.message || 'Failed to check connection' });
+    } finally {
+      setTestingTor(false);
     }
   };
 
@@ -895,6 +911,51 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className="w-32 bg-[#0b0d14] border border-gray-800 rounded-xl px-3 py-1.5 text-xs text-white outline-none"
                   />
                   <span className="text-[11px] text-gray-500 ml-3">Default: 9050 (or 9150 for Tor Browser)</span>
+                </div>
+
+                <div className="pt-2 border-t border-gray-800/80">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <div className="font-semibold text-white text-xs">Tor SOCKS Proxy Reachability</div>
+                      <div className="text-gray-500 text-[11px]">Verify that your local Tor background daemon or Tor Browser bundle is accepting connections.</div>
+                    </div>
+                    <button
+                      onClick={handleTestTorConnection}
+                      disabled={testingTor}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition disabled:opacity-50"
+                    >
+                      <RefreshCw size={13} className={testingTor ? 'animate-spin' : ''} />
+                      <span>{testingTor ? 'Testing...' : 'Test Connection'}</span>
+                    </button>
+                  </div>
+
+                  {torStatus && (
+                    <div
+                      className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 ${
+                        torStatus.connected
+                          ? 'bg-green-950/20 border-green-800/30 text-green-300'
+                          : 'bg-red-950/20 border-red-800/30 text-red-300'
+                      }`}
+                    >
+                      {torStatus.connected ? (
+                        <CheckCircle size={16} className="text-green-400 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <div className="font-semibold">
+                          {torStatus.connected
+                            ? `Connected to Tor SOCKS proxy (${torStatus.latencyMs}ms latency)`
+                            : 'Tor SOCKS proxy connection failed'}
+                        </div>
+                        <div className="text-[11px] mt-0.5 opacity-90">
+                          {torStatus.connected
+                            ? `Port ${settings.torSocksPort || 9050} is actively accepting traffic. Onion domains (.onion) and browser traffic will be routed securely.`
+                            : `${torStatus.error}. Make sure a Tor daemon (e.g. tor service, Tor Expert Bundle, or Tor Browser) is running on port ${settings.torSocksPort || 9050}.`}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3 bg-amber-950/20 border border-amber-800/30 rounded-xl text-xs text-amber-300 space-y-1.5">

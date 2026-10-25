@@ -22,6 +22,8 @@ import { shieldLogger } from './shieldLogger';
 import { diagnosticLogger } from './diagnosticLogger';
 import { buildSessionSnapshot, restoreTabState } from './sessionRestore';
 import { extractReaderArticle } from '../shared/readerExtractor';
+import { checkTorSocksConnectivity } from './torService';
+import { isOnionDomain } from '../shared/torUtils';
 import {
   ClearDataOptions,
   DownloadItem,
@@ -764,6 +766,11 @@ function navigateTab(id: string, rawInput: string): void {
     }
   }
 
+  // Intercept Tor Onion Services if Tor routing is not enabled
+  if (isOnionDomain(finalUrl) && !settings.enableTorRouting) {
+    finalUrl = `nova://error?url=${encodeURIComponent(finalUrl)}&code=ERR_TOR_REQUIRED&reason=${encodeURIComponent('Onion services require NOVA Tor Route to be enabled in Settings.')}`;
+  }
+
   managed.tab.url = finalUrl;
   managed.tab.blockedCount = 0;
 
@@ -1490,6 +1497,19 @@ ipcMain.handle('reader:extract', async (event, { targetUrl }) => {
   }
 
   return extractReaderArticle(html, url);
+});
+
+// NOVA Tor Route Connectivity Monitor
+ipcMain.handle('tor:check-connection', async (event, { port }) => {
+  assertAuthorizedSender(event);
+  const targetPort = port || storage.getSettings().torSocksPort || 9050;
+  const status = await checkTorSocksConnectivity(targetPort);
+  if (status.connected) {
+    diagnosticLogger.log('info', 'system', `Tor SOCKS proxy connection verified on port ${targetPort} (${status.latencyMs}ms latency)`);
+  } else {
+    diagnosticLogger.log('warning', 'system', `Tor SOCKS proxy check failed on port ${targetPort}: ${status.error}`);
+  }
+  return status;
 });
 
 // NOVA Encrypted Vault

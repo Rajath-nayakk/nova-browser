@@ -158,6 +158,10 @@ const novaAPI = {
   extractReaderArticle: (targetUrl?: string): Promise<ReaderArticle | null> =>
     ipcRenderer.invoke('reader:extract', { targetUrl }),
 
+  // Tor Circuit Connectivity
+  checkTorConnection: (port?: number): Promise<{ connected: boolean; latencyMs?: number; error?: string }> =>
+    ipcRenderer.invoke('tor:check-connection', { port }),
+
   // Permissions
   respondToPermission: (
     id: string,

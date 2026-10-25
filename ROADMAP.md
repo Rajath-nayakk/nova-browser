@@ -63,8 +63,8 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M9.3**: Add AddressBar quick "Toggle Reader Mode" action button when an article payload is detected.
 
 ### Milestone 10: Tor Routing Circuit Status & Onion Domain Dispatcher
-- [ ] **M10.1**: Implement `.onion` domain validation and automatic proxy routing dispatcher.
-- [ ] **M10.2**: Add Tor circuit health monitor and connection indicator in Network Settings.
+- [x] **M10.1**: Implement `.onion` domain validation and automatic proxy routing dispatcher.
+- [x] **M10.2**: Add Tor circuit health monitor and connection indicator in Network Settings.
 
 ### Milestone 11: Tab Grouping & Multi-Tab Workspace Organization
 - [ ] **M11.1**: Define tab grouping data models (`TabGroup`, `groupId`, `color`, `isCollapsed`) in shared types.
