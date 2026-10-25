@@ -8,6 +8,7 @@ import {
   Shield,
   Download,
   MoreVertical,
+  ZoomIn,
 } from 'lucide-react';
 import { Bookmark, DownloadItem, HistoryItem, PrivacyShieldStats, Tab } from '@shared/types';
 import { AddressBar } from './AddressBar';
@@ -180,8 +181,33 @@ export const Navbar: React.FC<NavbarProps> = ({
         isBookmarked={isBookmarked}
       />
 
-      {/* Right Action Icons: Shield, Downloads, Menu */}
+      {/* Right Action Icons: Zoom, Shield, Downloads, Menu */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {/* Zoom Level Indicator (click to reset to 100%) */}
+        {Math.round(currentZoom * 100) !== 100 && (
+          <button
+            onClick={onResetZoom}
+            style={{
+              height: '26px',
+              padding: '0 8px',
+              borderRadius: 'var(--radius-full)',
+              background: 'rgba(56, 189, 248, 0.14)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              color: 'var(--accent)',
+              fontSize: '11px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+            title="Reset Zoom to 100% (Ctrl+0)"
+            aria-label="Reset Zoom to 100%"
+          >
+            <ZoomIn size={12} />
+            {Math.round(currentZoom * 100)}%
+          </button>
+        )}
+
         {/* Privacy Shield Button */}
         <button
           onClick={() => {
