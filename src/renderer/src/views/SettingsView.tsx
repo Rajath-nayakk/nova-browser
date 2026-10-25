@@ -51,6 +51,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [filterUpdateMsg, setFilterUpdateMsg] = useState<string | null>(null);
   const [updatingThreats, setUpdatingThreats] = useState(false);
   const [threatUpdateMsg, setThreatUpdateMsg] = useState<string | null>(null);
+  const [customRulesText, setCustomRulesText] = useState((settings.customFilterRules || []).join('\n'));
 
   const showSaved = () => {
     setSavedFeedback(true);
@@ -497,6 +498,47 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Custom Adblock Rules Editor */}
+              <div className="bg-[#161926] border border-gray-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Custom Filter Rules</h3>
+                    <p className="text-xs text-gray-400">
+                      Add custom network blocking and cosmetic rules (Adblock Plus & uBlock syntax). One rule per line.
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-mono text-purple-400 bg-purple-950/40 border border-purple-800/40 px-2 py-0.5 rounded-md">
+                    {(settings.customFilterRules || []).length} active rule(s)
+                  </span>
+                </div>
+
+                <textarea
+                  value={customRulesText}
+                  onChange={(e) => setCustomRulesText(e.target.value)}
+                  placeholder={`! Custom Filter Examples:\n||doubleclick.net^\n||example-tracker.com^$third-party\nnews-website.com##.sponsored-post\n! Comments start with an exclamation mark`}
+                  rows={6}
+                  className="w-full bg-[#0b0d14] border border-gray-800 rounded-xl p-3 text-xs font-mono text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-500"
+                />
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-gray-500">
+                    Syntax: <code className="text-purple-300">||domain.com^</code> to block domain, <code className="text-purple-300">domain##.class</code> to hide element.
+                  </span>
+                  <button
+                    onClick={() => {
+                      const rules = customRulesText
+                        .split('\n')
+                        .map((r) => r.trim())
+                        .filter((r) => r.length > 0);
+                      handleUpdate({ customFilterRules: rules });
+                    }}
+                    className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition"
+                  >
+                    Apply Rules
+                  </button>
+                </div>
               </div>
             </div>
           )}

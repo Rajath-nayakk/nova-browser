@@ -686,6 +686,7 @@ app.whenReady().then(() => {
   storage = new LocalStorageManager();
   const dataDir = storage.getDataDir();
   filterEngine = new FilterEngineManager(dataDir);
+  filterEngine.setCustomRules(storage.getSettings().customFilterRules || []);
   threatProtection = new ThreatProtectionManager(dataDir);
   vault = new LocalVaultManager(dataDir);
 
@@ -1009,6 +1010,9 @@ ipcMain.handle('settings:get', (event) => {
 ipcMain.handle('settings:update', (event, partial) => {
   assertAuthorizedSender(event);
   const updated = storage.updateSettings(partial);
+  if (partial.customFilterRules && filterEngine) {
+    filterEngine.setCustomRules(updated.customFilterRules || []);
+  }
   updateActiveViewBounds();
   return updated;
 });
@@ -1016,6 +1020,9 @@ ipcMain.handle('settings:update', (event, partial) => {
 ipcMain.handle('settings:reset', (event) => {
   assertAuthorizedSender(event);
   const reset = storage.resetSettings();
+  if (filterEngine) {
+    filterEngine.setCustomRules(reset.customFilterRules || []);
+  }
   updateActiveViewBounds();
   return reset;
 });

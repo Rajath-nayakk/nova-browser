@@ -110,6 +110,7 @@ export interface BrowserSettings {
   siteShieldExceptions: Record<string, boolean>;
   shortcuts: ShortcutItem[];
   filterListsLastUpdated?: number;
+  customFilterRules: string[];
   // NOVA Tor Route
   enableTorRouting: boolean;
   torSocksPort: number;

@@ -29,7 +29,7 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [ ] **M3.4**: Add download speed and estimated time remaining (ETA) calculation.
 
 ### Milestone 4: NOVA Shield & Sentinel Enhancements
-- [ ] **M4.1**: Add Custom User Filter Rules support (allow users to add custom Adblock Plus/uBlock syntax rules in Settings).
+- [x] **M4.1**: Add Custom User Filter Rules support (allow users to add custom Adblock Plus/uBlock syntax rules in Settings).
 - [ ] **M4.2**: Implement Live Blocked Elements Inspector / Logger dialog (`PrivacyShieldPopup`).
 - [ ] **M4.3**: Add anti-circumvention scriptlet injection safeguards for video ad evasion.
 - [ ] **M4.4**: Enhance lookalike domain heuristics with Levenshtein distance typosquatting scores against top 100 brands.

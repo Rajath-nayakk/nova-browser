@@ -61,6 +61,7 @@ export const DEFAULT_SETTINGS: BrowserSettings = {
   siteShieldExceptions: {},
   shortcuts: DEFAULT_SHORTCUTS,
   filterListsLastUpdated: Date.now(),
+  customFilterRules: [],
   enableTorRouting: false,
   torSocksPort: 9050,
   activeProfileId: 'personal',

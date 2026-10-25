@@ -137,6 +137,8 @@ youtube.com##ytd-popup-container:has(.ytp-ad-dialog)
 
 export class FilterEngineManager {
   private engine: FiltersEngine | null = null;
+  private customEngine: FiltersEngine | null = null;
+  private customRules: string[] = [];
   private filtersDir: string;
   private metadataFile: string;
   private cacheFile: string;
@@ -248,15 +250,47 @@ export class FilterEngineManager {
     }
   }
 
+  public setCustomRules(rules: string[]): { success: boolean; ruleCount: number; error?: string } {
+    try {
+      this.customRules = rules;
+      const validRules = rules.map((r) => r.trim()).filter((r) => r.length > 0 && !r.startsWith('!'));
+      if (validRules.length === 0) {
+        this.customEngine = null;
+        return { success: true, ruleCount: 0 };
+      }
+      this.customEngine = FiltersEngine.parse(validRules.join('\n'));
+      return { success: true, ruleCount: validRules.length };
+    } catch (err: any) {
+      console.warn('Failed to parse custom filter rules:', err?.message);
+      return { success: false, ruleCount: 0, error: err?.message || 'Invalid rule syntax' };
+    }
+  }
+
+  public getCustomRules(): string[] {
+    return [...this.customRules];
+  }
+
   public getFilterLists(): FilterListInfo[] {
-    return this.listInfo;
+    const lists = [...this.listInfo];
+    if (this.customRules.length > 0) {
+      lists.push({
+        id: 'user-custom-filters',
+        name: 'My Custom Rules',
+        description: 'User-defined network and cosmetic filtering rules.',
+        ruleCount: this.customRules.filter((r) => r.trim().length > 0 && !r.startsWith('!')).length,
+        lastUpdated: Date.now(),
+        enabled: true,
+        isCustom: true,
+      });
+    }
+    return lists;
   }
 
   /**
    * Evaluates a network request against all active filter rules
    */
   public match(urlStr: string, sourceUrl?: string, resourceType: string = 'other'): FilterMatchResult {
-    if (!this.engine) {
+    if (!this.engine && !this.customEngine) {
       return { blocked: false };
     }
 
@@ -266,6 +300,26 @@ export class FilterEngineManager {
         sourceUrl: sourceUrl || urlStr,
         type: resourceType as any,
       });
+
+      // 1. Evaluate user's custom filter rules first
+      if (this.customEngine) {
+        try {
+          const customRes = this.customEngine.match(ghosteryReq);
+          if (customRes.match) {
+            return {
+              blocked: true,
+              category: 'ads',
+              filter: customRes.filter?.toString() || 'custom-filter-rule',
+            };
+          }
+        } catch {
+          // ignore custom engine error and fall through to base engine
+        }
+      }
+
+      if (!this.engine) {
+        return { blocked: false };
+      }
 
       const res = this.engine.match(ghosteryReq);
       if (res.match) {
@@ -319,11 +373,24 @@ export class FilterEngineManager {
    * Retrieves cosmetic stylesheet rules to inject into a given page
    */
   public getCosmeticFilters(urlStr: string, hostname?: string): string {
-    if (!this.engine) return '';
+    if (!this.engine && !this.customEngine) return '';
     try {
       const host = hostname || extractDomain(urlStr);
-      const res = this.engine.getCosmeticsFilters({ url: urlStr, hostname: host, domain: host });
-      let styles = res.styles || '';
+      let styles = '';
+
+      if (this.customEngine) {
+        try {
+          const cRes = this.customEngine.getCosmeticsFilters({ url: urlStr, hostname: host, domain: host });
+          if (cRes.styles) {
+            styles += cRes.styles + '\n';
+          }
+        } catch {}
+      }
+
+      if (this.engine) {
+        const res = this.engine.getCosmeticsFilters({ url: urlStr, hostname: host, domain: host });
+        styles += res.styles || '';
+      }
 
       // Add custom YouTube cosmetic CSS if on YouTube
       if (host.includes('youtube.com')) {
