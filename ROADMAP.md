@@ -72,8 +72,8 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M11.3**: Add group expand/collapse animation in TitleBar tab strip to declutter heavy workflows.
 
 ### Milestone 12: Offline Omnibox Search Suggestions & Keyword Engines
-- [ ] **M12.1**: Implement local fuzzy search index for matching bookmarks and history titles directly from the address bar.
-- [ ] **M12.2**: Add custom search engine keyword prefix shortcuts (e.g. `@w` for Wikipedia, `@d` for DuckDuckGo, `@gh` for GitHub).
+- [x] **M12.1**: Implement local fuzzy search index for matching bookmarks and history titles directly from the address bar.
+- [x] **M12.2**: Add custom search engine keyword prefix shortcuts (e.g. `@w` for Wikipedia, `@d` for DuckDuckGo, `@gh` for GitHub).
 
 ### Milestone 13: Hardware Acceleration Tuning & GPU Crash Recovery
 - [ ] **M13.1**: Add configurable hardware acceleration toggle in Settings with safe restart prompting.

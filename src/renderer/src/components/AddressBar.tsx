@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, AlertTriangle, Star, Search, Globe, Shield, X, Copy, Check, BookOpen } from 'lucide-react';
+import { Lock, AlertTriangle, Star, Search, Globe, Shield, X, Copy, Check, BookOpen, Compass } from 'lucide-react';
 import { Bookmark, HistoryItem, Tab, TlsSecurityDetails } from '@shared/types';
 import { extractDomain, isHttpsUrl, isInternalUrl, stripTrackingParameters } from '@shared/validation';
+import { generateOmniboxSuggestions, parseKeywordSearch, OmniboxSuggestion } from '@shared/searchSuggestions';
 import { useToast } from './Toast';
 
 interface AddressBarProps {
@@ -23,6 +24,7 @@ export const AddressBar: React.FC<AddressBarProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const [showSecurityInfo, setShowSecurityInfo] = useState(false);
   const [localTlsDetails, setLocalTlsDetails] = useState<TlsSecurityDetails | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -92,28 +94,51 @@ export const AddressBar: React.FC<AddressBarProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Filter local bookmarks and history for autocompletion
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [inputValue]);
+
+  // Ranked omnibox suggestions with keyword search and local indexing
   const suggestions = React.useMemo(() => {
     if (!isFocused || !inputValue.trim()) return [];
-    const query = inputValue.toLowerCase().trim();
-
-    const matchedBm = bookmarks
-      .filter((b) => b.title.toLowerCase().includes(query) || b.url.toLowerCase().includes(query))
-      .slice(0, 4)
-      .map((b) => ({ type: 'bookmark' as const, title: b.title, url: b.url }));
-
-    const matchedHist = history
-      .filter((h) => h.title.toLowerCase().includes(query) || h.url.toLowerCase().includes(query))
-      .slice(0, 4)
-      .map((h) => ({ type: 'history' as const, title: h.title, url: h.url }));
-
-    return [...matchedBm, ...matchedHist];
+    return generateOmniboxSuggestions(inputValue, bookmarks, history, 7);
   }, [inputValue, isFocused, bookmarks, history]);
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (suggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    } else if (e.key === 'Escape') {
+      setIsFocused(false);
+      setSelectedIndex(-1);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim()) {
-      onNavigate(inputValue.trim());
+    if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+      onNavigate(suggestions[selectedIndex].url);
+      setIsFocused(false);
+      setSelectedIndex(-1);
+      inputRef.current?.blur();
+      return;
+    }
+
+    const trimmed = inputValue.trim();
+    if (trimmed) {
+      const kw = parseKeywordSearch(trimmed);
+      if (kw.isKeyword && kw.searchUrl) {
+        onNavigate(kw.searchUrl);
+      } else {
+        onNavigate(trimmed);
+      }
+      setIsFocused(false);
+      setSelectedIndex(-1);
       inputRef.current?.blur();
     }
   };
@@ -176,6 +201,7 @@ export const AddressBar: React.FC<AddressBarProps> = ({
             value={inputValue}
             placeholder="Search with DuckDuckGo or enter address..."
             onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleInputKeyDown}
             onFocus={() => {
               setIsFocused(true);
               inputRef.current?.select();
@@ -407,39 +433,72 @@ export const AddressBar: React.FC<AddressBarProps> = ({
             border: '1px solid var(--border-color)',
           }}
         >
-          {suggestions.map((item, idx) => (
-            <div
-              key={idx}
-              onMouseDown={() => {
-                onNavigate(item.url);
-                setIsFocused(false);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '8px 14px',
-                cursor: 'pointer',
-                borderBottom: idx < suggestions.length - 1 ? '1px solid var(--border-color)' : 'none',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
-              {item.type === 'bookmark' ? (
-                <Star size={13} style={{ color: '#f59e0b', flexShrink: 0 }} fill="#f59e0b" />
-              ) : (
-                <Globe size={13} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '12px', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {item.title}
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {item.url}
+          {suggestions.map((item, idx) => {
+            const isSelected = selectedIndex === idx;
+            return (
+              <div
+                key={item.id}
+                onMouseDown={() => {
+                  onNavigate(item.url);
+                  setIsFocused(false);
+                }}
+                onMouseEnter={() => setSelectedIndex(idx)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '8px 14px',
+                  cursor: 'pointer',
+                  background: isSelected ? 'var(--bg-surface-hover)' : 'transparent',
+                  borderBottom: idx < suggestions.length - 1 ? '1px solid var(--border-color)' : 'none',
+                  transition: 'background 0.1s ease',
+                }}
+              >
+                {item.type === 'keyword' ? (
+                  <span style={{ fontSize: '15px', flexShrink: 0 }}>{item.icon || '🔍'}</span>
+                ) : item.type === 'bookmark' ? (
+                  <Star size={14} style={{ color: '#f59e0b', flexShrink: 0 }} fill="#f59e0b" />
+                ) : (
+                  <Globe size={14} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+                )}
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        color: 'var(--text-main)',
+                        fontWeight: item.type === 'keyword' ? 600 : 400,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {item.title}
+                    </span>
+                    {item.badge && (
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          background: item.type === 'keyword' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                          color: item.type === 'keyword' ? '#c084fc' : 'var(--text-muted)',
+                          fontFamily: item.type === 'keyword' ? 'monospace' : 'inherit',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {item.url}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
