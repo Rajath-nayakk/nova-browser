@@ -73,6 +73,8 @@ export const DEFAULT_SETTINGS: BrowserSettings = {
   enableTabSuspension: true,
   tabSuspensionMinutes: 30,
   hardwareAcceleration: true,
+  userAgentPreset: 'default',
+  antiFingerprinting: false,
 };
 
 export const TOP_BAR_HEIGHT_NORMAL = 86;

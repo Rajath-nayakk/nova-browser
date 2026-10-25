@@ -92,8 +92,8 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M16.2**: Create comprehensive developer onboarding and architecture guide (`docs/ARCHITECTURE.md`).
 
 ### Milestone 17: User-Agent Randomization & Anti-Fingerprinting Presets
-- [ ] **M17.1**: Implement client-side User-Agent profile selector (Windows, macOS, Linux, Mobile) with version cycling in `userAgentManager.ts`.
-- [ ] **M17.2**: Add Canvas and AudioContext noise injector to thwart passive browser fingerprinting.
+- [x] **M17.1**: Implement client-side User-Agent profile selector (Windows, macOS, Linux, Mobile) with version cycling in `userAgentManager.ts`.
+- [x] **M17.2**: Add Canvas and AudioContext noise injector to thwart passive browser fingerprinting.
 
 ### Milestone 18: Download Threat Intelligence Feed & Malware Hash Database
 - [ ] **M18.1**: Implement local SHA-256 blocklist of known malicious executables and ransomware hashes.

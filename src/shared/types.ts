@@ -162,6 +162,8 @@ export interface BrowserSettings {
   enableTabSuspension: boolean;
   tabSuspensionMinutes: number;
   hardwareAcceleration: boolean;
+  userAgentPreset?: string;
+  antiFingerprinting?: boolean;
 }
 
 export interface PrivacyShieldStats {
@@ -271,3 +273,5 @@ export type {
   CspAuditResult,
   SecurityHeadersAuditResult,
 } from './cspAuditor';
+
+export type { UserAgentProfile } from './userAgentManager';

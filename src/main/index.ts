@@ -31,6 +31,7 @@ import {
   enforceCookieLifetimePolicy,
 } from './cookieManager';
 import { auditSecurityHeaders, SecurityHeadersAuditResult } from '../shared/cspAuditor';
+import { resolveUserAgent, generateFingerprintNoiseScript } from '../shared/userAgentManager';
 
 const securityAuditCache = new Map<string, SecurityHeadersAuditResult>();
 import {
@@ -263,6 +264,12 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
     if (settings.sendDoNotTrack) {
       requestHeaders['DNT'] = '1';
       requestHeaders['Sec-GPC'] = '1';
+    }
+
+    // User-Agent Spoofing & Platform Cloaking
+    const customUa = resolveUserAgent(settings.userAgentPreset);
+    if (customUa) {
+      requestHeaders['User-Agent'] = customUa;
     }
 
     callback({ requestHeaders });
@@ -543,6 +550,10 @@ function createWebContentsViewForTab(tabData: Tab): WebContentsView {
       if (scriptlets) {
         wc.executeJavaScript(scriptlets).catch(() => {});
       }
+    }
+
+    if (!isInternalUrl(navUrl) && settings.antiFingerprinting) {
+      wc.executeJavaScript(generateFingerprintNoiseScript()).catch(() => {});
     }
 
     if (isHttpsUrl(navUrl)) {

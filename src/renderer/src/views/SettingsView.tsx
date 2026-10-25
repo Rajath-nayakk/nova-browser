@@ -39,6 +39,7 @@ import {
   updateProfile,
   deleteProfile,
 } from '@shared/profileUtils';
+import { USER_AGENT_PRESETS } from '@shared/userAgentManager';
 import { NovaLogo } from '../components/NovaLogo';
 
 interface SettingsViewProps {
@@ -814,6 +815,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className="accent-cyan-500 w-4 h-4"
                   />
                 </label>
+
+                <label className="flex items-center justify-between text-xs text-gray-300 cursor-pointer">
+                  <div>
+                    <div className="font-semibold text-white">Resist Canvas & Audio Fingerprinting</div>
+                    <div className="text-gray-500 text-[11px]">
+                      Injects subtle non-destructive mathematical micro-noise into canvas and audio buffers to defeat tracking hashes.
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.antiFingerprinting || false}
+                    onChange={(e) => handleUpdate({ antiFingerprinting: e.target.checked })}
+                    className="accent-cyan-500 w-4 h-4"
+                  />
+                </label>
               </div>
 
               <div className="bg-[#161926] border border-gray-800 rounded-2xl p-5 flex items-center justify-between">
@@ -853,6 +869,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     {cookieCapMsg}
                   </div>
                 )}
+              </div>
+
+              {/* User-Agent & Platform Cloaking */}
+              <div className="bg-[#161926] border border-gray-800 rounded-2xl p-5 space-y-3">
+                <div>
+                  <div className="text-sm font-semibold text-white">User-Agent Platform Cloaking</div>
+                  <div className="text-xs text-gray-400">
+                    Disguises your browser identity and operating system to prevent passive hardware fingerprinting.
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <select
+                    value={settings.userAgentPreset || 'default'}
+                    onChange={(e) => handleUpdate({ userAgentPreset: e.target.value })}
+                    className="w-full bg-[#0b0d14] border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 outline-none focus:border-cyan-500 cursor-pointer"
+                  >
+                    {USER_AGENT_PRESETS.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.uaString ? `(${p.platform})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Site Permissions Manager */}
