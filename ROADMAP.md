@@ -33,7 +33,7 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [ ] **M4.2**: Implement Live Blocked Elements Inspector / Logger dialog (`PrivacyShieldPopup`).
 - [x] **M4.3**: Add anti-circumvention scriptlet injection safeguards for video ad evasion.
 - [x] **M4.4**: Enhance lookalike domain heuristics with Levenshtein distance typosquatting scores against top 100 brands.
-- [ ] **M4.5**: Add SSL certificate expiration and cipher suite details in connection security popover.
+- [x] **M4.5**: Add SSL certificate expiration and cipher suite details in connection security popover.
 
 ### Milestone 5: Privacy Controls, Profiles & Vault
 - [x] **M5.1**: Add per-site permission manager panel in Settings (`nova://settings` -> Permissions).

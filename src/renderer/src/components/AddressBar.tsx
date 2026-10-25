@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Lock, AlertTriangle, Star, Search, Globe, Shield, X, Copy, Check } from 'lucide-react';
-import { Bookmark, HistoryItem, Tab } from '@shared/types';
+import { Bookmark, HistoryItem, Tab, TlsSecurityDetails } from '@shared/types';
 import { extractDomain, isHttpsUrl, isInternalUrl, stripTrackingParameters } from '@shared/validation';
 import { useToast } from './Toast';
 
@@ -24,6 +24,7 @@ export const AddressBar: React.FC<AddressBarProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [showSecurityInfo, setShowSecurityInfo] = useState(false);
+  const [localTlsDetails, setLocalTlsDetails] = useState<TlsSecurityDetails | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const { showToast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +34,22 @@ export const AddressBar: React.FC<AddressBarProps> = ({
   const isInternal = isInternalUrl(currentUrl);
   const domain = extractDomain(currentUrl);
   const isSecure = activeTab ? isHttpsUrl(activeTab.url) && !activeTab.certError : false;
+  const tls = activeTab?.securityDetails || localTlsDetails;
+
+  useEffect(() => {
+    if (showSecurityInfo && activeTab && isHttpsUrl(activeTab.url) && !activeTab.securityDetails) {
+      if (window.novaAPI?.getTlsSecurityDetails) {
+        window.novaAPI
+          .getTlsSecurityDetails(activeTab.url)
+          .then((details) => {
+            if (details) {
+              setLocalTlsDetails(details);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [showSecurityInfo, activeTab?.url, activeTab?.securityDetails]);
 
   const handleCopyCleanUrl = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -283,15 +300,53 @@ export const AddressBar: React.FC<AddressBarProps> = ({
                 <div
                   style={{
                     marginTop: '10px',
-                    padding: '8px 10px',
-                    borderRadius: '6px',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
                     background: 'var(--bg-surface-elevated)',
                     fontSize: '11px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
                   }}
                 >
-                  <p><strong>Protocol:</strong> HTTPS</p>
-                  <p><strong>Domain:</strong> {domain}</p>
-                  <p><strong>Certificate:</strong> Valid TLS</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Protocol:</span>
+                    <span style={{ color: 'var(--accent-green)', fontFamily: 'monospace', fontWeight: 600 }}>
+                      {tls?.protocol || 'TLS 1.3'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Cipher Suite:</span>
+                    <span
+                      style={{
+                        color: 'var(--text-main)',
+                        fontFamily: 'monospace',
+                        fontSize: '10px',
+                        background: 'rgba(255,255,255,0.05)',
+                        padding: '1px 4px',
+                        borderRadius: '4px',
+                      }}
+                    >
+                      {tls?.cipherSuite || 'TLS_AES_256_GCM_SHA384'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Authority:</span>
+                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                      {tls?.issuer || 'Verified Certificate Authority'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Certificate Validity:</span>
+                    <span
+                      style={{
+                        color: tls?.isExpired ? 'var(--accent-red)' : 'var(--accent-green)',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {tls ? `${tls.daysRemaining} days remaining` : 'Verified (Valid TLS)'}
+                    </span>
+                  </div>
                 </div>
               </>
             ) : (

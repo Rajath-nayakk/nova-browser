@@ -96,9 +96,11 @@ const novaAPI = {
   bypassThreat: (domain: string): Promise<boolean> =>
     ipcRenderer.invoke('threat:bypass', { domain }),
 
-  // Link Lens
+  // Link Lens & TLS Security
   inspectLink: (url: string): Promise<any> =>
     ipcRenderer.invoke('link:inspect', { url }),
+  getTlsSecurityDetails: (url: string): Promise<any> =>
+    ipcRenderer.invoke('security:get-tls-details', { url }),
 
   // Profiles
   switchProfile: (profileId: string): Promise<BrowserSettings> =>

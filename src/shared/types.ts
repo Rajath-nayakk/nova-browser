@@ -1,3 +1,14 @@
+export interface TlsSecurityDetails {
+  protocol: string;
+  cipherSuite: string;
+  issuer: string;
+  subjectName: string;
+  validFrom: number;
+  validTo: number;
+  daysRemaining: number;
+  isExpired: boolean;
+}
+
 export interface Tab {
   id: string;
   url: string;
@@ -8,6 +19,7 @@ export interface Tab {
   canGoForward: boolean;
   isSecure: boolean;
   certError?: string;
+  securityDetails?: TlsSecurityDetails;
   blockedCount: number;
   isMuted: boolean;
   zoomFactor: number;

@@ -15,6 +15,7 @@ import { FilterEngineManager } from './filterEngine';
 import { ThreatProtectionManager } from './threatProtection';
 import { LocalVaultManager } from './vault';
 import { LocalStorageManager } from './storage';
+import { getTlsSecurityDetails } from './tlsInspector';
 import {
   ClearDataOptions,
   DownloadItem,
@@ -407,6 +408,15 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
       if (scriptlets) {
         wc.executeJavaScript(scriptlets).catch(() => {});
       }
+    }
+
+    if (isHttpsUrl(navUrl)) {
+      getTlsSecurityDetails(navUrl).then((tlsInfo) => {
+        if (tlsInfo && tabs.has(id)) {
+          tabData.securityDetails = tlsInfo;
+          mainWindow?.webContents.send('tab:updated', tabData);
+        }
+      }).catch(() => {});
     }
   };
 
@@ -1087,6 +1097,12 @@ ipcMain.handle('threat:bypass', (event, { domain }) => {
 ipcMain.handle('link:inspect', (event, { url }) => {
   assertAuthorizedSender(event);
   return analyzeLinkWithLens(url || '');
+});
+
+// TLS / SSL Certificate & Cipher Inspector
+ipcMain.handle('security:get-tls-details', async (event, { url }) => {
+  assertAuthorizedSender(event);
+  return await getTlsSecurityDetails(url || '');
 });
 
 // Identity Profiles
