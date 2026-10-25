@@ -19,8 +19,8 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M2.1**: Implement Netscape Bookmark Format HTML import (`importBookmarksHtml`).
 - [x] **M2.2**: Implement Netscape Bookmark Format HTML export (`exportBookmarksHtml`).
 - [ ] **M2.3**: Add folder hierarchy support for bookmarks (`folderId`, nested subfolders).
-- [ ] **M2.4**: Add date range filtering and domain aggregation view in History (`nova://history`).
-- [ ] **M2.5**: Add quick-clear history for "Last hour", "Last 24 hours", "Last 7 days", "All time".
+- [x] **M2.4**: Add date range filtering and domain aggregation view in History (`nova://history`).
+- [x] **M2.5**: Add quick-clear history for "Last hour", "Last 24 hours", "Last 7 days", "All time".
 
 ### Milestone 3: Downloads Safety & Management
 - [ ] **M3.1**: Implement download pause, resume, and cancel controls via Electron IPC.
