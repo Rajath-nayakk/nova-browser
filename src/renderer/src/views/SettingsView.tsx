@@ -712,6 +712,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className="accent-cyan-500 w-4 h-4"
                   />
                 </label>
+
+                <label className="flex items-center justify-between text-xs text-gray-300 cursor-pointer">
+                  <div>
+                    <div className="font-semibold text-white">Clear Cookies & Cache Automatically on Exit</div>
+                    <div className="text-gray-500 text-[11px]">Purges session cookies, cached files, and local storage whenever NOVA is closed.</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.clearDataOnExit || false}
+                    onChange={(e) => handleUpdate({ clearDataOnExit: e.target.checked })}
+                    className="accent-cyan-500 w-4 h-4"
+                  />
+                </label>
               </div>
 
               <div className="bg-[#161926] border border-gray-800 rounded-2xl p-5 flex items-center justify-between">

@@ -69,6 +69,7 @@ export const DEFAULT_SETTINGS: BrowserSettings = {
   focusModeActive: false,
   focusDurationMinutes: 25,
   showClockOnNewTab: true,
+  clearDataOnExit: false,
 };
 
 export const TOP_BAR_HEIGHT_NORMAL = 86;

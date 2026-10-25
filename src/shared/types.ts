@@ -134,6 +134,7 @@ export interface BrowserSettings {
   focusModeActive: boolean;
   focusDurationMinutes: number;
   showClockOnNewTab: boolean;
+  clearDataOnExit: boolean;
 }
 
 export interface PrivacyShieldStats {

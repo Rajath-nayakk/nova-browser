@@ -16,6 +16,7 @@ import { ThreatProtectionManager } from './threatProtection';
 import { LocalVaultManager } from './vault';
 import { LocalStorageManager } from './storage';
 import { getTlsSecurityDetails } from './tlsInspector';
+import { performSessionDataCleanup } from './sessionCleanup';
 import {
   ClearDataOptions,
   DownloadItem,
@@ -738,6 +739,23 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+let isClearingBeforeQuit = false;
+
+app.on('before-quit', (event) => {
+  if (storage && !isClearingBeforeQuit) {
+    const settings = storage.getSettings();
+    if (settings.clearDataOnExit) {
+      event.preventDefault();
+      isClearingBeforeQuit = true;
+      performSessionDataCleanup(session.defaultSession)
+        .catch((err) => console.error('Error during exit cleanup:', err))
+        .finally(() => {
+          app.quit();
+        });
+    }
   }
 });
 
