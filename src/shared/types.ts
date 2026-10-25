@@ -53,9 +53,10 @@ export interface DownloadItem {
   savePath: string;
   totalBytes: number;
   receivedBytes: number;
-  state: 'progressing' | 'completed' | 'cancelled' | 'interrupted';
+  state: 'progressing' | 'completed' | 'cancelled' | 'interrupted' | 'paused';
   startTime: number;
   speed?: number;
+  etaSeconds?: number;
 }
 
 export interface FileChecksumResult {

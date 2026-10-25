@@ -23,10 +23,10 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M2.5**: Add quick-clear history for "Last hour", "Last 24 hours", "Last 7 days", "All time".
 
 ### Milestone 3: Downloads Safety & Management
-- [ ] **M3.1**: Implement download pause, resume, and cancel controls via Electron IPC.
+- [x] **M3.1**: Implement download pause, resume, and cancel controls via Electron IPC.
 - [x] **M3.2**: Add SHA-256 file checksum calculation and verification in Downloads view (`nova://downloads`).
 - [x] **M3.3**: Add dangerous download warning prompt with explicit user acknowledgement before opening executable files.
-- [ ] **M3.4**: Add download speed and estimated time remaining (ETA) calculation.
+- [x] **M3.4**: Add download speed and estimated time remaining (ETA) calculation.
 
 ### Milestone 4: NOVA Shield & Sentinel Enhancements
 - [x] **M4.1**: Add Custom User Filter Rules support (allow users to add custom Adblock Plus/uBlock syntax rules in Settings).

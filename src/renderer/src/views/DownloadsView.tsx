@@ -13,9 +13,13 @@ import {
   Check,
   ShieldAlert,
   Loader2,
+  Pause,
+  Play,
+  X,
 } from 'lucide-react';
 import { DownloadItem, FileChecksumResult } from '@shared/types';
 import { analyzeFileRisk, isExecutableFile } from '@shared/validation';
+import { formatDownloadSpeed, formatEta } from '@shared/downloadUtils';
 
 interface DownloadsViewProps {
   downloads: DownloadItem[];
@@ -70,6 +74,18 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
     setTimeout(() => {
       setCopiedHashId((prev) => (prev === id ? null : prev));
     }, 2000);
+  };
+
+  const handlePause = async (id: string) => {
+    await window.novaAPI?.pauseDownload(id);
+  };
+
+  const handleResume = async (id: string) => {
+    await window.novaAPI?.resumeDownload(id);
+  };
+
+  const handleCancel = async (id: string) => {
+    await window.novaAPI?.cancelDownload(id);
   };
 
   const filtered = downloads.filter((d) => {
@@ -340,10 +356,40 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                         <div style={{ fontSize: '11px', color: 'var(--text-faint)', marginTop: '2px' }}>
                           {formatBytes(dl.receivedBytes)}
                           {dl.totalBytes > 0 && ` of ${formatBytes(dl.totalBytes)}`}
-                          {` • ${dl.state}`}
+                          {` • `}
+                          <span
+                            style={{
+                              textTransform: 'capitalize',
+                              fontWeight: dl.state === 'progressing' || dl.state === 'paused' ? 600 : 400,
+                              color:
+                                dl.state === 'completed'
+                                  ? 'var(--accent-green)'
+                                  : dl.state === 'paused'
+                                  ? 'var(--accent-amber)'
+                                  : dl.state === 'cancelled' || dl.state === 'interrupted'
+                                  ? 'var(--accent-red)'
+                                  : 'var(--accent)',
+                            }}
+                          >
+                            {dl.state}
+                          </span>
+                          {dl.state === 'progressing' && dl.speed !== undefined && dl.speed > 0 && (
+                            <>
+                              {` • `}
+                              <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                                {formatDownloadSpeed(dl.speed)}
+                              </span>
+                            </>
+                          )}
+                          {dl.state === 'progressing' && dl.etaSeconds !== undefined && dl.etaSeconds > 0 && (
+                            <>
+                              {` • `}
+                              <span>ETA: {formatEta(dl.etaSeconds)}</span>
+                            </>
+                          )}
                         </div>
 
-                        {isProgressing && (
+                        {(isProgressing || dl.state === 'paused') && (
                           <div
                             style={{
                               height: '4px',
@@ -357,7 +403,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                               style={{
                                 height: '100%',
                                 width: `${progress}%`,
-                                background: 'var(--accent)',
+                                background: dl.state === 'paused' ? 'var(--accent-amber)' : 'var(--accent)',
                               }}
                             />
                           </div>
@@ -367,6 +413,66 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
 
                     {/* Actions */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {dl.state === 'progressing' && (
+                        <button
+                          onClick={() => handlePause(dl.id)}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--bg-surface-elevated)',
+                            color: 'var(--text-main)',
+                            fontSize: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                          title="Pause Download"
+                        >
+                          <Pause size={13} />
+                          <span>Pause</span>
+                        </button>
+                      )}
+
+                      {dl.state === 'paused' && (
+                        <button
+                          onClick={() => handleResume(dl.id)}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--accent)',
+                            color: '#000000',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                          title="Resume Download"
+                        >
+                          <Play size={13} />
+                          <span>Resume</span>
+                        </button>
+                      )}
+
+                      {(dl.state === 'progressing' || dl.state === 'paused') && (
+                        <button
+                          onClick={() => handleCancel(dl.id)}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: 'var(--accent-red)',
+                            fontSize: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                          title="Cancel Download"
+                        >
+                          <X size={13} />
+                          <span>Cancel</span>
+                        </button>
+                      )}
                       {isCompleted && (
                         <button
                           onClick={() => handleComputeHash(dl)}

@@ -75,6 +75,7 @@ const tabs = new Map<string, ManagedTab>();
 let activeTabId = '';
 const recentlyClosedTabs: string[] = [];
 let pendingPermissions = new Map<string, (allowed: boolean) => void>();
+const activeDownloadItems = new Map<string, Electron.DownloadItem>();
 
 // Privacy Shield Stats Tracking
 let totalTrackersBlocked = 0;
@@ -317,14 +318,39 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
     }
     mainWindow?.webContents.send('download:created', downloadRecord);
 
+    activeDownloadItems.set(downloadId, item);
+    let lastBytes = 0;
+    let lastTime = Date.now();
+
     item.on('updated', (ev, state) => {
       downloadRecord.receivedBytes = item.getReceivedBytes();
       downloadRecord.savePath = item.getSavePath();
-      if (state === 'interrupted') {
+
+      const now = Date.now();
+      const timeDiffSec = (now - lastTime) / 1000;
+      if (timeDiffSec >= 0.5) {
+        const bytesDiff = item.getReceivedBytes() - lastBytes;
+        const currentSpeed = Math.max(0, Math.round(bytesDiff / timeDiffSec));
+        downloadRecord.speed = currentSpeed;
+        if (currentSpeed > 0 && downloadRecord.totalBytes > downloadRecord.receivedBytes) {
+          downloadRecord.etaSeconds = Math.round(
+            (downloadRecord.totalBytes - downloadRecord.receivedBytes) / currentSpeed
+          );
+        } else {
+          downloadRecord.etaSeconds = undefined;
+        }
+        lastBytes = item.getReceivedBytes();
+        lastTime = now;
+      }
+
+      if (item.isPaused()) {
+        downloadRecord.state = 'paused';
+      } else if (state === 'interrupted') {
         downloadRecord.state = 'interrupted';
       } else if (state === 'progressing') {
         downloadRecord.state = 'progressing';
       }
+
       if (!isPrivate) {
         storage.updateDownload(downloadId, downloadRecord);
       }
@@ -332,9 +358,12 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
     });
 
     item.once('done', (ev, state) => {
+      activeDownloadItems.delete(downloadId);
       downloadRecord.receivedBytes = item.getReceivedBytes();
       downloadRecord.savePath = item.getSavePath();
       downloadRecord.state = state === 'completed' ? 'completed' : 'cancelled';
+      downloadRecord.speed = undefined;
+      downloadRecord.etaSeconds = undefined;
       if (!isPrivate) {
         storage.updateDownload(downloadId, downloadRecord);
       }
@@ -1066,6 +1095,37 @@ ipcMain.handle('downloads:clear', (event) => {
   assertAuthorizedSender(event);
   storage.clearDownloads();
   return true;
+});
+
+ipcMain.handle('downloads:pause', (event, { id }) => {
+  assertAuthorizedSender(event);
+  const item = activeDownloadItems.get(id);
+  if (item && !item.isPaused()) {
+    item.pause();
+    return true;
+  }
+  return false;
+});
+
+ipcMain.handle('downloads:resume', (event, { id }) => {
+  assertAuthorizedSender(event);
+  const item = activeDownloadItems.get(id);
+  if (item && item.canResume()) {
+    item.resume();
+    return true;
+  }
+  return false;
+});
+
+ipcMain.handle('downloads:cancel', (event, { id }) => {
+  assertAuthorizedSender(event);
+  const item = activeDownloadItems.get(id);
+  if (item) {
+    item.cancel();
+    activeDownloadItems.delete(id);
+    return true;
+  }
+  return false;
 });
 
 ipcMain.handle('downloads:show-in-folder', (event, { filePath }) => {

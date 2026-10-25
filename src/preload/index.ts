@@ -73,6 +73,12 @@ const novaAPI = {
   // Downloads
   getDownloads: (): Promise<DownloadItem[]> => ipcRenderer.invoke('downloads:get'),
   clearDownloads: (): Promise<boolean> => ipcRenderer.invoke('downloads:clear'),
+  pauseDownload: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('downloads:pause', { id }),
+  resumeDownload: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('downloads:resume', { id }),
+  cancelDownload: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('downloads:cancel', { id }),
   showInFolder: (filePath: string): Promise<void> =>
     ipcRenderer.invoke('downloads:show-in-folder', { filePath }),
   openDownloadedFile: (filePath: string): Promise<void> =>
