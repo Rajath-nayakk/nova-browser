@@ -36,7 +36,7 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [ ] **M4.5**: Add SSL certificate expiration and cipher suite details in connection security popover.
 
 ### Milestone 5: Privacy Controls, Profiles & Vault
-- [ ] **M5.1**: Add per-site permission manager panel in Settings (`nova://settings` -> Permissions).
+- [x] **M5.1**: Add per-site permission manager panel in Settings (`nova://settings` -> Permissions).
 - [ ] **M5.2**: Implement automatic cookie & cache clearing on window exit (configurable in Privacy Settings).
 - [ ] **M5.3**: Add custom profile avatar icons and color theme accents for multi-profile isolation.
 - [ ] **M5.4**: Add clipboard auto-clear timer (30 seconds) when copying sensitive credentials in NOVA Vault.

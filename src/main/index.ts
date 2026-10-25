@@ -1027,6 +1027,25 @@ ipcMain.handle('settings:reset', (event) => {
   return reset;
 });
 
+// Site Permissions Manager
+ipcMain.handle('permission:revoke', (event, { origin, permission }) => {
+  assertAuthorizedSender(event);
+  storage.revokeSitePermission(origin, permission);
+  return storage.getSettings();
+});
+
+ipcMain.handle('permission:set', (event, { origin, permission, decision }) => {
+  assertAuthorizedSender(event);
+  storage.setSitePermission(origin, permission, decision);
+  return storage.getSettings();
+});
+
+ipcMain.handle('permission:clear-all', (event) => {
+  assertAuthorizedSender(event);
+  storage.updateSettings({ sitePermissions: {} });
+  return storage.getSettings();
+});
+
 // Privacy Shield & Content Blocking
 ipcMain.handle('privacy:get-stats', (event) => {
   assertAuthorizedSender(event);

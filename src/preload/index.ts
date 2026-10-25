@@ -133,6 +133,12 @@ const novaAPI = {
     permission: string
   ): Promise<void> =>
     ipcRenderer.invoke('permission:respond', { id, decision, remember, origin, permission }),
+  revokeSitePermission: (origin: string, permission?: string): Promise<BrowserSettings> =>
+    ipcRenderer.invoke('permission:revoke', { origin, permission }),
+  setSitePermission: (origin: string, permission: string, decision: 'allow' | 'deny'): Promise<BrowserSettings> =>
+    ipcRenderer.invoke('permission:set', { origin, permission, decision }),
+  clearAllSitePermissions: (): Promise<BrowserSettings> =>
+    ipcRenderer.invoke('permission:clear-all'),
 
   // Event Listeners
   onTabInit: (callback: (data: { tabs: Tab[]; activeTabId: string; settings: BrowserSettings }) => void) => {

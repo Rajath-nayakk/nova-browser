@@ -91,16 +91,93 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const sitePermissionsList: { origin: string; permission: string; decision: string }[] = [];
-  if (settings.sitePermissions) {
-    Object.entries(settings.sitePermissions).forEach(([origin, perms]) => {
-      if (perms) {
-        Object.entries(perms).forEach(([perm, decision]) => {
-          sitePermissionsList.push({ origin, permission: perm, decision: String(decision) });
-        });
+  const [permissionSearch, setPermissionSearch] = useState('');
+
+  const getPermissionIcon = (perm: string) => {
+    switch (perm.toLowerCase()) {
+      case 'camera':
+      case 'video':
+        return <Camera size={13} className="text-purple-400" />;
+      case 'microphone':
+      case 'audio':
+        return <Mic size={13} className="text-pink-400" />;
+      case 'geolocation':
+      case 'location':
+        return <MapPin size={13} className="text-amber-400" />;
+      case 'notifications':
+        return <Bell size={13} className="text-cyan-400" />;
+      default:
+        return <Lock size={13} className="text-gray-400" />;
+    }
+  };
+
+  const handleRevokePermission = async (origin: string, permission?: string) => {
+    if (window.novaAPI?.revokeSitePermission) {
+      const updated = await window.novaAPI.revokeSitePermission(origin, permission);
+      onUpdateSettings(updated);
+    } else {
+      const current = { ...(settings.sitePermissions || {}) };
+      if (permission && current[origin]) {
+        const nextOriginPerms = { ...current[origin] };
+        delete nextOriginPerms[permission];
+        if (Object.keys(nextOriginPerms).length === 0) {
+          delete current[origin];
+        } else {
+          current[origin] = nextOriginPerms;
+        }
+      } else {
+        delete current[origin];
       }
-    });
-  }
+      onUpdateSettings({ sitePermissions: current });
+    }
+    showSaved();
+  };
+
+  const handleTogglePermission = async (
+    origin: string,
+    permission: string,
+    currentDecision: 'allow' | 'deny'
+  ) => {
+    const nextDecision = currentDecision === 'allow' ? 'deny' : 'allow';
+    if (window.novaAPI?.setSitePermission) {
+      const updated = await window.novaAPI.setSitePermission(origin, permission, nextDecision);
+      onUpdateSettings(updated);
+    } else {
+      const current = { ...(settings.sitePermissions || {}) };
+      if (!current[origin]) current[origin] = {};
+      current[origin] = { ...current[origin], [permission]: nextDecision };
+      onUpdateSettings({ sitePermissions: current });
+    }
+    showSaved();
+  };
+
+  const handleClearAllPermissions = async () => {
+    if (window.confirm('Are you sure you want to reset all stored website permissions?')) {
+      if (window.novaAPI?.clearAllSitePermissions) {
+        const updated = await window.novaAPI.clearAllSitePermissions();
+        onUpdateSettings(updated);
+      } else {
+        onUpdateSettings({ sitePermissions: {} });
+      }
+      showSaved();
+    }
+  };
+
+  const allOriginEntries = Object.entries(settings.sitePermissions || {}).filter(
+    ([, perms]) => perms && Object.keys(perms).length > 0
+  );
+
+  const totalPermissionsCount = allOriginEntries.reduce(
+    (acc, [, perms]) => acc + Object.keys(perms).length,
+    0
+  );
+
+  const filteredOrigins = allOriginEntries.filter(([origin, perms]) => {
+    if (!permissionSearch.trim()) return true;
+    const term = permissionSearch.toLowerCase();
+    if (origin.toLowerCase().includes(term)) return true;
+    return Object.keys(perms).some((p) => p.toLowerCase().includes(term));
+  });
 
   const siteExceptionsList = Object.keys(settings.siteShieldExceptions || {});
 
@@ -648,6 +725,110 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 >
                   Clear Data...
                 </button>
+              </div>
+
+              {/* Site Permissions Manager */}
+              <div className="bg-[#161926] border border-gray-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Site Permissions Manager</h3>
+                    <p className="text-xs text-gray-400">
+                      Manage stored camera, microphone, location, and notification access granted to websites.
+                    </p>
+                  </div>
+                  {totalPermissionsCount > 0 && (
+                    <button
+                      onClick={handleClearAllPermissions}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 text-red-300 rounded-xl text-xs font-medium transition"
+                    >
+                      <Trash2 size={13} />
+                      Reset All Permissions
+                    </button>
+                  )}
+                </div>
+
+                {totalPermissionsCount > 0 && (
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-2.5 text-gray-500" />
+                    <input
+                      type="text"
+                      value={permissionSearch}
+                      onChange={(e) => setPermissionSearch(e.target.value)}
+                      placeholder="Search permissions by website domain..."
+                      className="w-full bg-[#0b0d14] border border-gray-800 focus:border-cyan-500 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none"
+                    />
+                  </div>
+                )}
+
+                {filteredOrigins.length === 0 ? (
+                  <div className="p-6 text-center border border-dashed border-gray-800 rounded-xl">
+                    <Globe size={24} className="mx-auto text-gray-600 mb-2" />
+                    <div className="text-xs text-gray-400 font-medium">
+                      {permissionSearch ? 'No websites match your search' : 'No custom site permissions stored'}
+                    </div>
+                    <p className="text-[11px] text-gray-600 mt-0.5">
+                      Websites will prompt you for permission before accessing your camera, microphone, or location.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredOrigins.map(([origin, perms]) => (
+                      <div
+                        key={origin}
+                        className="bg-[#0b0d14] border border-gray-800/80 rounded-xl p-3.5 space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between border-b border-gray-800/60 pb-2">
+                          <div className="flex items-center gap-2">
+                            <Globe size={14} className="text-cyan-400" />
+                            <span className="text-xs font-semibold text-white font-mono">{origin}</span>
+                          </div>
+                          <button
+                            onClick={() => handleRevokePermission(origin)}
+                            className="text-[11px] text-gray-400 hover:text-red-400 flex items-center gap-1 transition"
+                            title="Reset all permissions for this website"
+                          >
+                            <Trash2 size={11} />
+                            Reset Site
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {Object.entries(perms).map(([perm, decision]) => (
+                            <div
+                              key={perm}
+                              className="flex items-center justify-between p-2 rounded-lg bg-[#141724] border border-gray-800"
+                            >
+                              <div className="flex items-center gap-2">
+                                {getPermissionIcon(perm)}
+                                <span className="text-xs text-gray-300 capitalize">{perm}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleTogglePermission(origin, perm, decision as 'allow' | 'deny')}
+                                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded transition ${
+                                    decision === 'allow'
+                                      ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
+                                      : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
+                                  }`}
+                                  title="Click to toggle Allow / Deny"
+                                >
+                                  {decision}
+                                </button>
+                                <button
+                                  onClick={() => handleRevokePermission(origin, perm)}
+                                  className="text-gray-500 hover:text-red-400 transition"
+                                  title="Revoke this permission"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
