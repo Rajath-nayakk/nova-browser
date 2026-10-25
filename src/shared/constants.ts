@@ -34,6 +34,13 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: '8', title: 'EFF Privacy', url: 'https://www.eff.org', icon: '🛡️' },
 ];
 
+export const DEFAULT_PROFILES = [
+  { id: 'personal', name: 'Personal', icon: '👤', color: '#8b5cf6', partition: 'persist:profile_personal' },
+  { id: 'work', name: 'Work', icon: '💼', color: '#3b82f6', partition: 'persist:profile_work' },
+  { id: 'shopping', name: 'Shopping', icon: '🛍️', color: '#10b981', partition: 'persist:profile_shopping' },
+  { id: 'research', name: 'Research', icon: '🔬', color: '#f59e0b', partition: 'persist:profile_research' },
+];
+
 export const DEFAULT_SETTINGS: BrowserSettings = {
   theme: 'dark',
   searchEngine: 'duckduckgo',
@@ -54,6 +61,13 @@ export const DEFAULT_SETTINGS: BrowserSettings = {
   siteShieldExceptions: {},
   shortcuts: DEFAULT_SHORTCUTS,
   filterListsLastUpdated: Date.now(),
+  enableTorRouting: false,
+  torSocksPort: 9050,
+  activeProfileId: 'personal',
+  profiles: DEFAULT_PROFILES,
+  focusModeActive: false,
+  focusDurationMinutes: 25,
+  showClockOnNewTab: true,
 };
 
 export const TOP_BAR_HEIGHT_NORMAL = 86;

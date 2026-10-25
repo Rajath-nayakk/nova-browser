@@ -175,18 +175,22 @@ export function isExecutableFile(filename: string): boolean {
 }
 
 /**
- * Strips tracking parameters (utm_*, fbclid, etc.) from a URL
+ * Expanded tracking query parameters (Google, Meta, Microsoft, Twitter, TikTok, Yandex, CRMs)
+ */
+export const KNOWN_TRACKING_PARAMS = [
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id', 'utm_source_platform',
+  'fbclid', 'gclid', 'gbraid', 'wbraid', 'msclkid', 'twclid', 'ttclid', 'yclid', 'ysclid',
+  '_ga', '_gl', 'dclid', 'mc_eid', 'vero_id', '_hsenc', '_hsmi', 'mkt_tok', 'wickedid', 'zanpid', 'igshid', 's_kwcid'
+];
+
+/**
+ * Strips tracking parameters from a URL
  */
 export function stripTrackingParameters(urlStr: string): string {
   try {
     const url = new URL(urlStr);
-    const trackingParams = [
-      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-      'fbclid', 'gclid', 'gbraid', 'wbraid', 'msclkid', 'mc_eid', 'vero_id',
-      '_hsenc', '_hsmi', 'yclid', 'zanpid', 'igshid', 's_kwcid'
-    ];
     let modified = false;
-    trackingParams.forEach((param) => {
+    KNOWN_TRACKING_PARAMS.forEach((param) => {
       if (url.searchParams.has(param)) {
         url.searchParams.delete(param);
         modified = true;
@@ -197,3 +201,164 @@ export function stripTrackingParameters(urlStr: string): string {
     return urlStr;
   }
 }
+
+/**
+ * High-value domains targeted by phishing / impersonation attacks
+ */
+export const TARGET_BRAND_DOMAINS = [
+  'google.com', 'accounts.google.com', 'paypal.com', 'apple.com', 'microsoft.com',
+  'amazon.com', 'netflix.com', 'chase.com', 'bankofamerica.com', 'wellsfargo.com',
+  'binance.com', 'coinbase.com', 'github.com', 'facebook.com', 'instagram.com',
+  'twitter.com', 'x.com', 'linkedin.com', 'steamcommunity.com', 'discord.com'
+];
+
+/**
+ * Checks for IDN homograph / punycode lookalike domain attacks or deceptive typosquatting
+ */
+export function isLookalikeDomain(domain: string): { isLookalike: boolean; targetBrand?: string; reason?: string } {
+  if (!domain) return { isLookalike: false };
+  const lower = domain.toLowerCase();
+
+  // 1. Detect Punycode / IDN internationalized domains targeting ASCII names
+  if (lower.startsWith('xn--') || lower.includes('.xn--')) {
+    return {
+      isLookalike: true,
+      reason: 'Contains Punycode (IDN) representation which may conceal lookalike Cyrillic or Greek characters.',
+    };
+  }
+
+  // 2. Detect mixed script / invisible unicode characters
+  // Check for Cyrillic characters commonly used to spoof Latin letters (а, с, е, о, р, х, у, etc.)
+  if (/[\u0400-\u04FF\u0370-\u03FF]/.test(domain)) {
+    return {
+      isLookalike: true,
+      reason: 'Contains non-Latin (Cyrillic/Greek) glyphs visually resembling standard Latin characters.',
+    };
+  }
+
+  // 3. Detect subdomain impersonation (e.g. paypal.com.account-verify.xyz)
+  for (const brand of TARGET_BRAND_DOMAINS) {
+    const brandName = brand.split('.')[0];
+    // If brand name is part of subdomain but not the registered second-level domain
+    if (lower.includes(`${brandName}.com.`) || lower.includes(`${brandName}-verify.`) || lower.includes(`${brandName}-login.`)) {
+      return {
+        isLookalike: true,
+        targetBrand: brand,
+        reason: `Deceptive hostname attempting to impersonate legitimate brand "${brand}".`,
+      };
+    }
+  }
+
+  // 4. Character substitution typosquatting (e.g., paypa1, g00gle, rnicrosoft)
+  const canonical = lower
+    .replace(/0/g, 'o')
+    .replace(/1/g, 'l')
+    .replace(/rn/g, 'm')
+    .replace(/vv/g, 'w');
+
+  for (const brand of TARGET_BRAND_DOMAINS) {
+    if (canonical.includes(brand) && !lower.endsWith(`.${brand}`) && lower !== brand) {
+      return {
+        isLookalike: true,
+        targetBrand: brand,
+        reason: `Character substitution visually resembling "${brand}".`,
+      };
+    }
+  }
+
+  return { isLookalike: false };
+}
+
+export interface LinkLensReport {
+  url: string;
+  domain: string;
+  scheme: string;
+  isSecure: boolean;
+  isInternal: boolean;
+  isLookalike: boolean;
+  lookalikeTarget?: string;
+  hasTrackingParams: boolean;
+  trackingParamsFound: string[];
+  cleanUrl: string;
+  suspiciousReasons: string[];
+}
+
+/**
+ * Analyzes a URL with NOVA Link Lens, providing deep inspection without loading
+ */
+export function analyzeLinkWithLens(urlStr: string): LinkLensReport {
+  const reasons: string[] = [];
+  let domain = '';
+  let scheme = '';
+  let isSecure = false;
+  let hasTrackingParams = false;
+  const trackingParamsFound: string[] = [];
+  let cleanUrl = urlStr;
+  const isInternal = isInternalUrl(urlStr);
+
+  try {
+    const parsed = new URL(urlStr);
+    scheme = parsed.protocol.replace(':', '');
+    domain = parsed.hostname;
+    isSecure = parsed.protocol === 'https:';
+
+    if (parsed.protocol === 'http:') {
+      reasons.push('Insecure connection (plain HTTP without encryption).');
+    }
+
+    if (!isSafeNavigationUrl(urlStr)) {
+      reasons.push('Dangerous or non-standard protocol.');
+    }
+
+    // Check tracking parameters
+    KNOWN_TRACKING_PARAMS.forEach((param) => {
+      if (parsed.searchParams.has(param)) {
+        hasTrackingParams = true;
+        trackingParamsFound.push(param);
+      }
+    });
+
+    if (hasTrackingParams) {
+      cleanUrl = stripTrackingParameters(urlStr);
+    }
+
+    // Check IP address navigation
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(domain)) {
+      reasons.push('Navigates directly to an IP address rather than a verified domain name.');
+    }
+
+    // Check lookalike / homograph
+    const lookalike = isLookalikeDomain(domain);
+    if (lookalike.isLookalike && lookalike.reason) {
+      reasons.push(lookalike.reason);
+    }
+
+    return {
+      url: urlStr,
+      domain,
+      scheme,
+      isSecure,
+      isInternal,
+      isLookalike: lookalike.isLookalike,
+      lookalikeTarget: lookalike.targetBrand,
+      hasTrackingParams,
+      trackingParamsFound,
+      cleanUrl,
+      suspiciousReasons: reasons,
+    };
+  } catch {
+    return {
+      url: urlStr,
+      domain: '',
+      scheme: 'invalid',
+      isSecure: false,
+      isInternal,
+      isLookalike: false,
+      hasTrackingParams: false,
+      trackingParamsFound: [],
+      cleanUrl: urlStr,
+      suspiciousReasons: ['Malformed or unparseable URL string.'],
+    };
+  }
+}
+

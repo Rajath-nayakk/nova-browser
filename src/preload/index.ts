@@ -79,13 +79,43 @@ const novaAPI = {
     ipcRenderer.invoke('settings:update', partial),
   resetSettings: (): Promise<BrowserSettings> => ipcRenderer.invoke('settings:reset'),
 
-  // Privacy Shield
+  // Privacy Shield & Content Blocking
   getPrivacyStats: (): Promise<PrivacyShieldStats> =>
     ipcRenderer.invoke('privacy:get-stats'),
   toggleSiteShield: (domain: string, disabled: boolean): Promise<boolean> =>
     ipcRenderer.invoke('privacy:toggle-site-shield', { domain, disabled }),
   clearBrowsingData: (options: ClearDataOptions): Promise<boolean> =>
     ipcRenderer.invoke('privacy:clear-data', options),
+  updateFilterLists: (): Promise<{ success: boolean; message: string; updatedCount: number }> =>
+    ipcRenderer.invoke('privacy:update-filter-lists'),
+  updateThreatFeeds: (): Promise<{ success: boolean; message: string; count: number }> =>
+    ipcRenderer.invoke('privacy:update-threat-feeds'),
+  bypassThreat: (domain: string): Promise<boolean> =>
+    ipcRenderer.invoke('threat:bypass', { domain }),
+
+  // Link Lens
+  inspectLink: (url: string): Promise<any> =>
+    ipcRenderer.invoke('link:inspect', { url }),
+
+  // Profiles
+  switchProfile: (profileId: string): Promise<BrowserSettings> =>
+    ipcRenderer.invoke('profile:switch', { profileId }),
+
+  // Vault
+  vaultIsInitialized: (): Promise<boolean> =>
+    ipcRenderer.invoke('vault:is-initialized'),
+  vaultIsUnlocked: (): Promise<boolean> =>
+    ipcRenderer.invoke('vault:is-unlocked'),
+  vaultInit: (masterPassword: string): Promise<boolean> =>
+    ipcRenderer.invoke('vault:init', { masterPassword }),
+  vaultUnlock: (masterPassword: string): Promise<any> =>
+    ipcRenderer.invoke('vault:unlock', { masterPassword }),
+  vaultLock: (): Promise<void> =>
+    ipcRenderer.invoke('vault:lock'),
+  vaultGetItems: (): Promise<any[]> =>
+    ipcRenderer.invoke('vault:get-items'),
+  vaultSaveItems: (items: any[]): Promise<boolean> =>
+    ipcRenderer.invoke('vault:save-items', { items }),
 
   // Permissions
   respondToPermission: (

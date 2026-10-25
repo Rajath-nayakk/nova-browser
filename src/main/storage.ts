@@ -103,6 +103,10 @@ export class LocalStorageManager {
     this.downloadsCache = this.safeReadJson<DownloadItem[]>(this.downloadsFile, []);
   }
 
+  public getDataDir(): string {
+    return this.dataDir;
+  }
+
   // Settings
   public getSettings(): BrowserSettings {
     return { ...this.settingsCache };

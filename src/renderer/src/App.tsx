@@ -12,6 +12,9 @@ import { BookmarksView } from './views/BookmarksView';
 import { HistoryView } from './views/HistoryView';
 import { DownloadsView } from './views/DownloadsView';
 import { SettingsView } from './views/SettingsView';
+import { WarningView } from './views/WarningView';
+import { VaultView } from './views/VaultView';
+import { LinkLensModal } from './components/LinkLensModal';
 
 import {
   Bookmark,
@@ -40,6 +43,7 @@ export const App: React.FC = () => {
   // Modals & Floating Bars
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showLinkLensModal, setShowLinkLensModal] = useState(false);
   const [showFindInPage, setShowFindInPage] = useState(false);
   const [findResult, setFindResult] = useState<FindInPageResult | undefined>();
   const [activePermissionReq, setActivePermissionReq] = useState<PermissionRequest | null>(null);
@@ -48,10 +52,12 @@ export const App: React.FC = () => {
   const [privacyStats, setPrivacyStats] = useState<PrivacyShieldStats>({
     totalBlocked: 0,
     pageBlocked: 0,
-    breakdown: { ads: 0, trackers: 0, analytics: 0, cryptominers: 0 },
+    breakdown: { ads: 0, trackers: 0, analytics: 0, cryptominers: 0, threats: 0 },
     isShieldEnabled: true,
     currentDomain: '',
     isSiteWhitelisted: false,
+    filterLists: [],
+    lastUpdated: Date.now(),
   });
 
   const api = window.novaAPI;
@@ -407,6 +413,15 @@ export const App: React.FC = () => {
             onOpenClearData={() => setShowClearDataModal(true)}
           />
         );
+      case 'warning':
+        return (
+          <WarningView
+            url={activeTab?.url || ''}
+            onNavigate={handleNavigate}
+          />
+        );
+      case 'vault':
+        return <VaultView />;
       case 'newtab':
       default:
         return (
@@ -420,6 +435,7 @@ export const App: React.FC = () => {
               if (s) setSettings(s);
             }}
             onOpenSettings={() => handleNavigate('nova://settings')}
+            isPrivate={activeTab?.isPrivate || false}
           />
         );
     }
@@ -484,6 +500,8 @@ export const App: React.FC = () => {
           if (activeTabId) api?.openDevTools(activeTabId);
         }}
         onOpenAbout={() => setShowAboutModal(true)}
+        onOpenLinkLens={() => setShowLinkLensModal(true)}
+        onOpenVault={() => handleNavigate('nova://vault')}
         theme={settings.theme}
         onToggleTheme={async () => {
           const next = settings.theme === 'dark' ? 'light' : 'dark';
@@ -536,6 +554,15 @@ export const App: React.FC = () => {
         <ClearDataModal
           onClose={() => setShowClearDataModal(false)}
           onClear={handleClearData}
+        />
+      )}
+
+      {/* Link Lens URL Deep Inspector Modal */}
+      {showLinkLensModal && (
+        <LinkLensModal
+          initialUrl={activeTab && !isInternalUrl(activeTab.url) ? activeTab.url : ''}
+          onClose={() => setShowLinkLensModal(false)}
+          onNavigate={handleNavigate}
         />
       )}
 

@@ -60,6 +60,27 @@ export interface FilterListInfo {
   isCustom?: boolean;
 }
 
+export interface BrowserProfile {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  partition: string;
+}
+
+export interface VaultItem {
+  id: string;
+  title: string;
+  category: 'note' | 'credential' | 'code' | 'bookmark';
+  content: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface VaultData {
+  items: VaultItem[];
+}
+
 export interface BrowserSettings {
   theme: 'dark' | 'light' | 'system';
   searchEngine: 'duckduckgo' | 'brave' | 'google' | 'bing' | 'custom';
@@ -80,6 +101,16 @@ export interface BrowserSettings {
   siteShieldExceptions: Record<string, boolean>;
   shortcuts: ShortcutItem[];
   filterListsLastUpdated?: number;
+  // NOVA Tor Route
+  enableTorRouting: boolean;
+  torSocksPort: number;
+  // NOVA Identity Profiles
+  activeProfileId: string;
+  profiles: BrowserProfile[];
+  // NOVA Focus
+  focusModeActive: boolean;
+  focusDurationMinutes: number;
+  showClockOnNewTab: boolean;
 }
 
 export interface PrivacyShieldStats {

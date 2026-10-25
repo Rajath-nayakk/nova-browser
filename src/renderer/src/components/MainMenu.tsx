@@ -16,6 +16,8 @@ import {
   Info,
   Sun,
   Moon,
+  Lock,
+  Sparkles,
 } from 'lucide-react';
 
 interface MainMenuProps {
@@ -34,6 +36,8 @@ interface MainMenuProps {
   onToggleDevTools: () => void;
   onOpenSettings: () => void;
   onOpenAbout: () => void;
+  onOpenVault?: () => void;
+  onOpenLinkLens?: () => void;
   theme: string;
   onToggleTheme: () => void;
 }
@@ -54,6 +58,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   onToggleDevTools,
   onOpenSettings,
   onOpenAbout,
+  onOpenVault,
+  onOpenLinkLens,
   theme,
   onToggleTheme,
 }) => {
@@ -166,6 +172,16 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       label: 'Developer Tools',
       shortcut: 'F12',
       onClick: onToggleDevTools,
+    },
+    {
+      icon: <Lock size={15} style={{ color: '#a78bfa' }} />,
+      label: 'Encrypted Vault',
+      onClick: onOpenVault || onOpenSettings,
+    },
+    {
+      icon: <Sparkles size={15} style={{ color: '#38bdf8' }} />,
+      label: 'Link Lens Inspector',
+      onClick: onOpenLinkLens || onOpenSettings,
     },
     { divider: true },
     {

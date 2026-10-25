@@ -10,7 +10,9 @@ import {
 } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import { checkUrlAgainstBlocklist } from './blocklist';
+import { FilterEngineManager } from './filterEngine';
+import { ThreatProtectionManager } from './threatProtection';
+import { LocalVaultManager } from './vault';
 import { LocalStorageManager } from './storage';
 import {
   ClearDataOptions,
@@ -19,6 +21,7 @@ import {
   Tab,
 } from '../shared/types';
 import {
+  analyzeLinkWithLens,
   extractDomain,
   extractOrigin,
   isExecutableFile,
@@ -32,6 +35,7 @@ import {
   NEW_TAB_URL,
   TOP_BAR_HEIGHT_NORMAL,
   TOP_BAR_HEIGHT_WITH_BOOKMARKS,
+  WARNING_URL,
 } from '../shared/constants';
 
 // Prevent multiple instances
@@ -41,6 +45,9 @@ if (!gotSingleInstanceLock) {
 }
 
 let storage: LocalStorageManager;
+let filterEngine: FilterEngineManager;
+let threatProtection: ThreatProtectionManager;
+let vault: LocalVaultManager;
 let mainWindow: BrowserWindow | null = null;
 
 // Track authorized renderer WebContents IDs to prevent unauthorized IPC calls
@@ -70,6 +77,7 @@ const trackerBreakdown = {
   trackers: 0,
   analytics: 0,
   cryptominers: 0,
+  threats: 0,
 };
 
 function getTopBarHeight(): number {
@@ -111,12 +119,37 @@ function updateActiveViewBounds(): void {
   }
 }
 
+function applyTorSettings(targetSession: Electron.Session): void {
+  if (!storage) return;
+  const settings = storage.getSettings();
+  if (settings.enableTorRouting) {
+    targetSession.setProxy({ proxyRules: `socks5://127.0.0.1:${settings.torSocksPort || 9050}` });
+    (targetSession as any).setWebRTCIPHandlingPolicy?.('disable_non_proxied_udp');
+  } else {
+    targetSession.setProxy({ proxyRules: '' });
+    (targetSession as any).setWebRTCIPHandlingPolicy?.('default');
+  }
+}
+
 function setupSessionShield(targetSession: Electron.Session, isPrivate = false): void {
-  // Setup Ad & Tracker Blocking via webRequest
+  applyTorSettings(targetSession);
+
+  // Setup Ad, Tracker, and Threat Blocking via webRequest
   targetSession.webRequest.onBeforeRequest((details, callback) => {
     const settings = storage.getSettings();
 
-    // If global shields disabled, pass through
+    // 1. Phishing & Malware Subresource Defense
+    if (settings.blockMalwareAndPhishing && threatProtection) {
+      const threat = threatProtection.checkUrl(details.url);
+      if (threat.isThreat) {
+        totalTrackersBlocked++;
+        trackerBreakdown.threats++;
+        callback({ cancel: true });
+        return;
+      }
+    }
+
+    // 2. If global shields disabled, pass through
     if (!settings.blockTrackers && !settings.blockAds) {
       callback({});
       return;
@@ -129,25 +162,27 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
       return;
     }
 
-    // Check URL against blocklist
-    const match = checkUrlAgainstBlocklist(details.url);
-    if (match.blocked) {
-      totalTrackersBlocked++;
-      if (match.category) {
-        trackerBreakdown[match.category]++;
-      }
-
-      // Find which tab this belongs to and increment its count
-      for (const [id, managed] of tabs.entries()) {
-        if (managed.view.webContents.id === details.webContentsId) {
-          managed.tab.blockedCount = (managed.tab.blockedCount || 0) + 1;
-          mainWindow?.webContents.send('tab:updated', managed.tab);
-          break;
+    // 3. Match against FilterEngine (EasyList + EasyPrivacy + YouTube rules)
+    if (filterEngine) {
+      const match = filterEngine.match(details.url, details.referrer, details.resourceType);
+      if (match.blocked) {
+        totalTrackersBlocked++;
+        if (match.category) {
+          trackerBreakdown[match.category]++;
         }
-      }
 
-      callback({ cancel: true });
-      return;
+        // Find which tab this belongs to and increment its count
+        for (const [id, managed] of tabs.entries()) {
+          if (managed.view.webContents.id === details.webContentsId) {
+            managed.tab.blockedCount = (managed.tab.blockedCount || 0) + 1;
+            mainWindow?.webContents.send('tab:updated', managed.tab);
+            break;
+          }
+        }
+
+        callback({ cancel: true });
+        return;
+      }
     }
 
     callback({});
@@ -164,6 +199,24 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
     }
 
     callback({ requestHeaders });
+  });
+
+  // Third-Party Tracking Cookie Protection
+  targetSession.webRequest.onHeadersReceived((details, callback) => {
+    const settings = storage.getSettings();
+    const responseHeaders = { ...details.responseHeaders };
+
+    if (settings.blockThirdPartyCookies && details.referrer) {
+      const reqDomain = extractDomain(details.url);
+      const refDomain = extractDomain(details.referrer);
+      // If request is from an unrelated third-party domain, strip Set-Cookie to stop cross-site tracking
+      if (reqDomain && refDomain && reqDomain !== refDomain && !reqDomain.endsWith(`.${refDomain}`) && !refDomain.endsWith(`.${reqDomain}`)) {
+        delete responseHeaders['set-cookie'];
+        delete responseHeaders['Set-Cookie'];
+      }
+    }
+
+    callback({ responseHeaders });
   });
 
   // Permission Requests (Camera, Mic, Geolocation, etc.)
@@ -286,10 +339,16 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
 
 function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
   const id = `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const settings = storage.getSettings();
 
-  const tabSession = isPrivate
-    ? session.fromPartition(`incognito-${Date.now()}`, { cache: false })
-    : session.defaultSession;
+  let tabSession: Electron.Session;
+  if (isPrivate) {
+    tabSession = session.fromPartition(`incognito-${Date.now()}`, { cache: false });
+  } else {
+    const activeProfile = settings.profiles?.find((p) => p.id === settings.activeProfileId);
+    const partition = activeProfile?.partition || 'persist:profile_personal';
+    tabSession = session.fromPartition(partition);
+  }
 
   setupSessionShield(tabSession, isPrivate);
 
@@ -335,11 +394,54 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
     mainWindow?.webContents.send('tab:updated', tabData);
   });
 
-  // Intercept and prevent dangerous navigations (javascript:, data:, etc.)
+  // Inject cosmetic CSS and YouTube ad-skipping logic when page finishes loading
+  wc.on('did-finish-load', () => {
+    const navUrl = wc.getURL();
+    if (!isInternalUrl(navUrl) && filterEngine) {
+      const cosmeticCss = filterEngine.getCosmeticFilters(navUrl);
+      if (cosmeticCss) {
+        wc.insertCSS(cosmeticCss).catch(() => {});
+      }
+      if (navUrl.includes('youtube.com')) {
+        wc.executeJavaScript(`
+          (() => {
+            if (window.__nova_ad_shield_active) return;
+            window.__nova_ad_shield_active = true;
+            const checkAndSkip = () => {
+              const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, button.ytp-ad-skip-button');
+              if (skipBtn) (skipBtn as HTMLElement).click();
+              const video = document.querySelector('video');
+              const adShowing = document.querySelector('.ad-showing, .ytp-ad-player-overlay');
+              if (adShowing && video && video.duration && !video.paused) {
+                video.muted = true;
+                video.currentTime = video.duration;
+              }
+              const closeBtn = document.querySelector('.ytp-ad-overlay-close-button');
+              if (closeBtn) (closeBtn as HTMLElement).click();
+            };
+            setInterval(checkAndSkip, 400);
+          })();
+        `).catch(() => {});
+      }
+    }
+  });
+
+  // Intercept and prevent dangerous navigations and phishing/malware threats
   wc.on('will-navigate', (event, navigationUrl) => {
     if (!isSafeNavigationUrl(navigationUrl)) {
       event.preventDefault();
       console.warn(`Blocked unsafe navigation attempt to: ${navigationUrl}`);
+      return;
+    }
+
+    if (settings.blockMalwareAndPhishing && !isInternalUrl(navigationUrl) && threatProtection) {
+      const threat = threatProtection.checkUrl(navigationUrl);
+      if (threat.isThreat) {
+        event.preventDefault();
+        const warnUrl = `${WARNING_URL}?url=${encodeURIComponent(navigationUrl)}&threat=${threat.category || 'malware'}&reason=${encodeURIComponent(threat.reason || '')}&domain=${encodeURIComponent(threat.domain || '')}`;
+        navigateTab(id, warnUrl);
+        return;
+      }
     }
   });
 
@@ -497,6 +599,14 @@ function navigateTab(id: string, rawInput: string): void {
     finalUrl = stripTrackingParameters(finalUrl);
   }
 
+  // Check threat protection on user navigation
+  if (settings.blockMalwareAndPhishing && !isInternalUrl(finalUrl) && threatProtection) {
+    const threat = threatProtection.checkUrl(finalUrl);
+    if (threat.isThreat) {
+      finalUrl = `${WARNING_URL}?url=${encodeURIComponent(finalUrl)}&threat=${threat.category || 'malware'}&reason=${encodeURIComponent(threat.reason || '')}&domain=${encodeURIComponent(threat.domain || '')}`;
+    }
+  }
+
   managed.tab.url = finalUrl;
   managed.tab.blockedCount = 0;
 
@@ -573,6 +683,11 @@ function createMainWindow(isPrivate = false): BrowserWindow {
 // App lifecycle
 app.whenReady().then(() => {
   storage = new LocalStorageManager();
+  const dataDir = storage.getDataDir();
+  filterEngine = new FilterEngineManager(dataDir);
+  threatProtection = new ThreatProtectionManager(dataDir);
+  vault = new LocalVaultManager(dataDir);
+
   setupSessionShield(session.defaultSession);
 
   // Disable default menu bar
@@ -866,7 +981,7 @@ ipcMain.handle('settings:reset', (event) => {
   return reset;
 });
 
-// Privacy Shield
+// Privacy Shield & Content Blocking
 ipcMain.handle('privacy:get-stats', (event) => {
   assertAuthorizedSender(event);
   const activeManaged = tabs.get(activeTabId);
@@ -878,6 +993,8 @@ ipcMain.handle('privacy:get-stats', (event) => {
     isShieldEnabled: storage.getSettings().blockTrackers,
     currentDomain: domain,
     isSiteWhitelisted: domain ? storage.isSiteShieldDisabled(domain) : false,
+    filterLists: filterEngine ? filterEngine.getFilterLists() : [],
+    lastUpdated: storage.getSettings().filterListsLastUpdated || Date.now(),
   };
 });
 
@@ -885,6 +1002,88 @@ ipcMain.handle('privacy:toggle-site-shield', (event, { domain, disabled }) => {
   assertAuthorizedSender(event);
   storage.setSiteShieldDisabled(domain, disabled);
   return true;
+});
+
+ipcMain.handle('privacy:update-filter-lists', async (event) => {
+  assertAuthorizedSender(event);
+  if (!filterEngine) {
+    return { success: false, message: 'Filter engine not ready', updatedCount: 0 };
+  }
+  const result = await filterEngine.updateFilterLists();
+  if (result.success) {
+    storage.updateSettings({ filterListsLastUpdated: Date.now() });
+  }
+  return result;
+});
+
+ipcMain.handle('privacy:update-threat-feeds', async (event) => {
+  assertAuthorizedSender(event);
+  if (!threatProtection) {
+    return { success: false, message: 'Threat protection not ready', count: 0 };
+  }
+  return await threatProtection.updateThreatFeeds();
+});
+
+ipcMain.handle('threat:bypass', (event, { domain }) => {
+  assertAuthorizedSender(event);
+  if (threatProtection && domain) {
+    threatProtection.bypassThreatForSession(domain);
+  }
+  return true;
+});
+
+// Link Lens URL Inspector
+ipcMain.handle('link:inspect', (event, { url }) => {
+  assertAuthorizedSender(event);
+  return analyzeLinkWithLens(url || '');
+});
+
+// Identity Profiles
+ipcMain.handle('profile:switch', (event, { profileId }) => {
+  assertAuthorizedSender(event);
+  const updated = storage.updateSettings({ activeProfileId: profileId });
+  // Create a clean new tab in the chosen profile
+  const tab = createTab(NEW_TAB_URL);
+  switchTab(tab.id);
+  return updated;
+});
+
+// NOVA Encrypted Vault
+ipcMain.handle('vault:is-initialized', (event) => {
+  assertAuthorizedSender(event);
+  return vault ? vault.isInitialized() : false;
+});
+
+ipcMain.handle('vault:is-unlocked', (event) => {
+  assertAuthorizedSender(event);
+  return vault ? vault.isUnlocked() : false;
+});
+
+ipcMain.handle('vault:init', (event, { masterPassword }) => {
+  assertAuthorizedSender(event);
+  return vault ? vault.initialize(masterPassword) : false;
+});
+
+ipcMain.handle('vault:unlock', (event, { masterPassword }) => {
+  assertAuthorizedSender(event);
+  return vault ? vault.unlock(masterPassword) : null;
+});
+
+ipcMain.handle('vault:lock', (event) => {
+  assertAuthorizedSender(event);
+  if (vault) {
+    vault.lock();
+  }
+});
+
+ipcMain.handle('vault:get-items', (event) => {
+  assertAuthorizedSender(event);
+  return vault ? vault.getItems() : [];
+});
+
+ipcMain.handle('vault:save-items', (event, { items }) => {
+  assertAuthorizedSender(event);
+  return vault ? vault.saveItems(items) : false;
 });
 
 ipcMain.handle('privacy:clear-data', async (event, options: ClearDataOptions) => {

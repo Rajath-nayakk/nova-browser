@@ -46,6 +46,8 @@ interface NavbarProps {
   onOpenClearData: () => void;
   onToggleDevTools: () => void;
   onOpenAbout: () => void;
+  onOpenLinkLens?: () => void;
+  onOpenVault?: () => void;
   theme: string;
   onToggleTheme: () => void;
 }
@@ -81,6 +83,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenClearData,
   onToggleDevTools,
   onOpenAbout,
+  onOpenLinkLens,
+  onOpenVault,
   theme,
   onToggleTheme,
 }) => {
@@ -275,6 +279,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClose={() => setShowShieldPopup(false)}
           onToggleSiteShield={onToggleSiteShield}
           onOpenSettings={onOpenSettings}
+          onOpenLinkLens={onOpenLinkLens}
         />
       )}
 
@@ -305,6 +310,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           onToggleDevTools={onToggleDevTools}
           onOpenSettings={onOpenSettings}
           onOpenAbout={onOpenAbout}
+          onOpenVault={onOpenVault}
+          onOpenLinkLens={onOpenLinkLens}
           theme={theme}
           onToggleTheme={onToggleTheme}
         />

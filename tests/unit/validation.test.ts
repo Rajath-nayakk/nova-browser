@@ -7,6 +7,8 @@ import {
   isExecutableFile,
   stripTrackingParameters,
   isValidDomainOrHost,
+  isLookalikeDomain,
+  analyzeLinkWithLens,
 } from '../../src/shared/validation';
 import { NEW_TAB_URL } from '../../src/shared/constants';
 
@@ -85,4 +87,29 @@ describe('URL Normalization & Validation', () => {
     expect(cleaned).not.toContain('utm_source');
     expect(cleaned).not.toContain('fbclid');
   });
+
+  it('detects lookalike and typosquatting domains', () => {
+    // Homoglyphs / punycode lookalikes
+    expect(isLookalikeDomain('xn--pypal-4ve.com').isLookalike).toBe(true);
+    expect(isLookalikeDomain('paypa1.com').isLookalike).toBe(true);
+    expect(isLookalikeDomain('g00gle.com').isLookalike).toBe(true);
+    expect(isLookalikeDomain('paypal.com').isLookalike).toBe(false);
+    expect(isLookalikeDomain('google.com').isLookalike).toBe(false);
+    expect(isLookalikeDomain('github.com').isLookalike).toBe(false);
+
+    // Link Lens deep inspection
+    const report1 = analyzeLinkWithLens('http://paypa1.com/login?utm_source=spam&gclid=123');
+    expect(report1.suspiciousReasons.length).toBeGreaterThan(0);
+    expect(report1.isLookalike).toBe(true);
+    expect(report1.isSecure).toBe(false);
+    expect(report1.trackingParamsFound).toContain('utm_source');
+    expect(report1.cleanUrl).toBe('http://paypa1.com/login');
+
+    const report2 = analyzeLinkWithLens('https://www.eff.org/deeplinks?utm_campaign=tracker');
+    expect(report2.suspiciousReasons.length).toBe(0);
+    expect(report2.isSecure).toBe(true);
+    expect(report2.trackingParamsFound).toContain('utm_campaign');
+    expect(report2.cleanUrl).toBe('https://www.eff.org/deeplinks');
+  });
 });
+
