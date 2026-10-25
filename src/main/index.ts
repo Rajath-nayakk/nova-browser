@@ -20,6 +20,7 @@ import { performSessionDataCleanup } from './sessionCleanup';
 import { shouldSuspendTab } from './tabSuspension';
 import { shieldLogger } from './shieldLogger';
 import { diagnosticLogger } from './diagnosticLogger';
+import { buildSessionSnapshot, restoreTabState } from './sessionRestore';
 import {
   ClearDataOptions,
   DownloadItem,
@@ -613,8 +614,18 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
 
   const view = createWebContentsViewForTab(tabData);
   tabs.set(id, { tab: tabData, view, lastActiveTime: Date.now() });
+  persistCurrentSession();
 
   return tabData;
+}
+
+function persistCurrentSession(): void {
+  if (!storage) return;
+  const settings = storage.getSettings();
+  if (!settings.restoreSession) return;
+  const tabList = Array.from(tabs.values()).map((m) => m.tab);
+  const snapshot = buildSessionSnapshot(tabList, activeTabId);
+  storage.saveSession(snapshot);
 }
 
 function suspendTab(id: string): boolean {
@@ -676,6 +687,7 @@ function switchTab(id: string): void {
   managed.lastActiveTime = Date.now();
   updateActiveViewBounds();
   mainWindow?.webContents.send('tab:switched', id);
+  persistCurrentSession();
 }
 
 function closeTab(id: string): void {
@@ -716,6 +728,7 @@ function closeTab(id: string): void {
   }
 
   mainWindow?.webContents.send('tab:closed', id);
+  persistCurrentSession();
 }
 
 function navigateTab(id: string, rawInput: string): void {
@@ -773,6 +786,7 @@ function navigateTab(id: string, rawInput: string): void {
       console.warn(`Failed to navigate to ${finalUrl}:`, err);
     });
   }
+  persistCurrentSession();
 }
 
 function createMainWindow(isPrivate = false): BrowserWindow {
@@ -839,9 +853,39 @@ app.whenReady().then(() => {
 
   mainWindow = createMainWindow();
 
-  // Create initial tab
-  const initialTab = createTab(NEW_TAB_URL);
-  activeTabId = initialTab.id;
+  // Restore previous session tabs or create initial tab
+  const settings = storage.getSettings();
+  const savedSession = settings.restoreSession ? storage.getLastSession() : null;
+
+  if (savedSession && savedSession.tabs && savedSession.tabs.length > 0) {
+    const targetActiveId = savedSession.activeTabId || savedSession.tabs[0].id;
+    activeTabId = targetActiveId;
+
+    for (const savedTab of savedSession.tabs) {
+      const isActive = savedTab.id === targetActiveId;
+      const restoredTab = restoreTabState(savedTab, isActive);
+
+      let view: WebContentsView | null = null;
+      if (!restoredTab.isSuspended) {
+        view = createWebContentsViewForTab(restoredTab);
+        if (!isInternalUrl(restoredTab.url)) {
+          view.webContents.loadURL(restoredTab.url).catch(() => {});
+        }
+      }
+
+      tabs.set(restoredTab.id, {
+        tab: restoredTab,
+        view,
+        lastActiveTime: isActive ? Date.now() : 0,
+      });
+    }
+    const suspendedCount = Array.from(tabs.values()).filter((t) => t.tab.isSuspended).length;
+    diagnosticLogger.log('info', 'session', `Restored ${tabs.size} tabs from previous session (${suspendedCount} lazily suspended).`);
+  } else {
+    // Create initial tab
+    const initialTab = createTab(NEW_TAB_URL);
+    activeTabId = initialTab.id;
+  }
 
   mainWindow.webContents.once('did-finish-load', () => {
     // Send initial tabs and settings to renderer
@@ -888,6 +932,7 @@ app.on('before-quit', (event) => {
   if (storage && !isClearingBeforeQuit) {
     const settings = storage.getSettings();
     if (settings.clearDataOnExit) {
+      storage.clearSession();
       event.preventDefault();
       isClearingBeforeQuit = true;
       performSessionDataCleanup(session.defaultSession)
@@ -895,7 +940,9 @@ app.on('before-quit', (event) => {
         .finally(() => {
           app.quit();
         });
+      return;
     }
+    persistCurrentSession();
   }
 });
 
@@ -1236,6 +1283,11 @@ ipcMain.handle('settings:update', (event, partial) => {
   const updated = storage.updateSettings(partial);
   if (partial.customFilterRules && filterEngine) {
     filterEngine.setCustomRules(updated.customFilterRules || []);
+  }
+  if (partial.restoreSession === false) {
+    storage.clearSession();
+  } else if (partial.restoreSession === true) {
+    persistCurrentSession();
   }
   updateActiveViewBounds();
   return updated;

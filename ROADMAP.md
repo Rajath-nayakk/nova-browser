@@ -51,7 +51,7 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 ### Milestone 7: Performance, Tab Suspension & Memory Management
 - [x] **M7.1**: Implement automatic tab discard / memory suspension for inactive background tabs after configurable timeout.
 - [x] **M7.2**: Implement manual "Suspend Tab" action in tab context menu.
-- [ ] **M7.3**: Optimize startup cold-boot by lazy-loading non-active tab webviews.
+- [x] **M7.3**: Optimize startup cold-boot by lazy-loading non-active tab webviews.
 
 ### Milestone 8: Automation, CI/CD & Cross-Platform Packaging
 - [x] **M8.1**: Create GitHub Actions CI workflow for automated linting, typechecks, and Vitest runs.

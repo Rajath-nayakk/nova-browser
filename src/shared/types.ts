@@ -29,6 +29,18 @@ export interface Tab {
   isSuspended?: boolean;
 }
 
+export interface PersistedTabSession {
+  tabs: {
+    id: string;
+    url: string;
+    title: string;
+    favicon?: string;
+    isPinned?: boolean;
+  }[];
+  activeTabId: string;
+  savedAt: number;
+}
+
 export interface Bookmark {
   id: string;
   title: string;

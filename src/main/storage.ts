@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { app } from 'electron';
-import { Bookmark, BrowserSettings, DownloadItem, HistoryItem } from '../shared/types';
+import { Bookmark, BrowserSettings, DownloadItem, HistoryItem, PersistedTabSession } from '../shared/types';
 import { DEFAULT_SETTINGS } from '../shared/constants';
 
 export class LocalStorageManager {
@@ -10,6 +10,7 @@ export class LocalStorageManager {
   private bookmarksFile: string;
   private historyFile: string;
   private downloadsFile: string;
+  private sessionFile: string;
 
   private settingsCache: BrowserSettings = { ...DEFAULT_SETTINGS };
   private bookmarksCache: Bookmark[] = [];
@@ -24,6 +25,7 @@ export class LocalStorageManager {
     this.bookmarksFile = path.join(this.dataDir, 'bookmarks.json');
     this.historyFile = path.join(this.dataDir, 'history.json');
     this.downloadsFile = path.join(this.dataDir, 'downloads.json');
+    this.sessionFile = path.join(this.dataDir, 'session.json');
 
     this.loadAll();
   }
@@ -274,5 +276,27 @@ export class LocalStorageManager {
       delete exceptions[originOrDomain];
     }
     this.updateSettings({ siteShieldExceptions: exceptions });
+  }
+
+  // Tab Session Persistence & Cold-Boot Restoration
+  public getLastSession(): PersistedTabSession | null {
+    if (!fs.existsSync(this.sessionFile)) {
+      return null;
+    }
+    return this.safeReadJson<PersistedTabSession | null>(this.sessionFile, null);
+  }
+
+  public saveSession(sessionData: PersistedTabSession): void {
+    this.safeAtomicWrite(this.sessionFile, sessionData);
+  }
+
+  public clearSession(): void {
+    if (fs.existsSync(this.sessionFile)) {
+      try {
+        fs.unlinkSync(this.sessionFile);
+      } catch (err) {
+        console.error('Failed to clear session file:', err);
+      }
+    }
   }
 }
