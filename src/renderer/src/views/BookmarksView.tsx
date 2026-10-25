@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Bookmark as BookmarkIcon, Search, Plus, Trash2, Edit2, ExternalLink, Globe } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Bookmark as BookmarkIcon, Search, Plus, Trash2, Edit2, ExternalLink, Globe, Download, Upload } from 'lucide-react';
 import { Bookmark } from '@shared/types';
+import { exportBookmarksToHtml, parseBookmarksFromHtml } from '@shared/bookmarkParser';
+import { useToast } from '../components/Toast';
 
 interface BookmarksViewProps {
   bookmarks: Bookmark[];
@@ -22,6 +24,45 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const { showToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportHtml = () => {
+    if (bookmarks.length === 0) {
+      showToast('No bookmarks to export', 'warning');
+      return;
+    }
+    const htmlContent = exportBookmarksToHtml(bookmarks);
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `nova_bookmarks_${new Date().toISOString().slice(0, 10)}.html`;
+    a.click();
+    URL.revokeObjectURL(downloadUrl);
+    showToast(`Exported ${bookmarks.length} bookmarks to Netscape HTML`, 'success');
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      const parsed = parseBookmarksFromHtml(content);
+      if (parsed.count === 0) {
+        showToast('No valid bookmarks found in HTML file', 'warning');
+        return;
+      }
+      parsed.bookmarks.forEach((bm) => {
+        onAddBookmark(bm.title, bm.url);
+      });
+      showToast(`Successfully imported ${parsed.count} bookmarks`, 'success');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
 
   const filteredBookmarks = bookmarks.filter(
     (b) =>
@@ -100,28 +141,77 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setTitle('');
-              setUrl('');
-              setShowAddModal(true);
-            }}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--accent)',
-              color: '#000000',
-              fontWeight: 600,
-              fontSize: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <Plus size={15} />
-            <span>Add Bookmark</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImportFile}
+              accept=".html,.htm"
+              style={{ display: 'none' }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-main)',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              title="Import Bookmarks from Netscape HTML"
+              aria-label="Import HTML"
+            >
+              <Upload size={14} />
+              <span>Import HTML</span>
+            </button>
+
+            <button
+              onClick={handleExportHtml}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-main)',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              title="Export Bookmarks to Netscape HTML"
+              aria-label="Export HTML"
+            >
+              <Download size={14} />
+              <span>Export HTML</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setEditingId(null);
+                setTitle('');
+                setUrl('');
+                setShowAddModal(true);
+              }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--accent)',
+                color: '#000000',
+                fontWeight: 600,
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <Plus size={15} />
+              <span>Add Bookmark</span>
+            </button>
+          </div>
         </div>
 
         {/* Search input */}
