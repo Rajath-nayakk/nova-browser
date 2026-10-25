@@ -76,8 +76,8 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M12.2**: Add custom search engine keyword prefix shortcuts (e.g. `@w` for Wikipedia, `@d` for DuckDuckGo, `@gh` for GitHub).
 
 ### Milestone 13: Hardware Acceleration Tuning & GPU Crash Recovery
-- [ ] **M13.1**: Add configurable hardware acceleration toggle in Settings with safe restart prompting.
-- [ ] **M13.2**: Implement automatic GPU / renderer process crash detection with graceful tab recovery prompts.
+- [x] **M13.1**: Add configurable hardware acceleration toggle in Settings with safe restart prompting.
+- [x] **M13.2**: Implement automatic GPU / renderer process crash detection with graceful tab recovery prompts.
 
 ### Milestone 14: Cookie Auto-Expiry & Granular Site Storage Inspector
 - [ ] **M14.1**: Build site storage inspector showing exact cookies, localStorage, and IndexedDB usage per origin.

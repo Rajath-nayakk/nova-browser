@@ -24,6 +24,7 @@ import { buildSessionSnapshot, restoreTabState } from './sessionRestore';
 import { extractReaderArticle } from '../shared/readerExtractor';
 import { checkTorSocksConnectivity } from './torService';
 import { isOnionDomain } from '../shared/torUtils';
+import { getCrashRecoveryInfo } from '../shared/crashRecovery';
 import {
   ClearDataOptions,
   DownloadItem,
@@ -53,6 +54,16 @@ import {
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
+}
+
+// Early hardware acceleration check before app ready
+try {
+  const earlyStorage = new LocalStorageManager();
+  if (earlyStorage.getSettings().hardwareAcceleration === false) {
+    app.disableHardwareAcceleration();
+  }
+} catch {
+  // Ignore fallback if storage directory not yet initialized
 }
 
 let storage: LocalStorageManager;
@@ -460,6 +471,27 @@ function createWebContentsViewForTab(tabData: Tab): WebContentsView {
   wc.on('media-paused', () => {
     tabData.isPlayingAudio = false;
     mainWindow?.webContents.send('tab:updated', tabData);
+  });
+
+  // Handle process crashes and memory exhaustion (OOM)
+  wc.on('render-process-gone', (_event, details) => {
+    const crashInfo = getCrashRecoveryInfo(details.reason, details.exitCode);
+    diagnosticLogger.log('error', 'system', `Tab process crashed (${details.reason}, code: ${details.exitCode}) on URL: ${tabData.url}`);
+
+    tabData.isLoading = false;
+    tabData.title = crashInfo.title;
+    const errorUrl = `nova://error?url=${encodeURIComponent(tabData.url)}&code=ERR_RENDERER_CRASHED&reason=${encodeURIComponent(crashInfo.explanation)}`;
+    tabData.url = errorUrl;
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('tab:updated', tabData);
+      mainWindow.webContents.send('tab:crashed', {
+        tabId: tabData.id,
+        reason: details.reason,
+        exitCode: details.exitCode,
+        info: crashInfo,
+      });
+    }
   });
 
   // Inject cosmetic CSS and anti-circumvention scriptlets when page is ready
@@ -1497,6 +1529,14 @@ ipcMain.handle('reader:extract', async (event, { targetUrl }) => {
   }
 
   return extractReaderArticle(html, url);
+});
+
+// App Relaunch
+ipcMain.handle('app:relaunch', (event) => {
+  assertAuthorizedSender(event);
+  diagnosticLogger.log('info', 'system', 'Browser relaunch requested.');
+  app.relaunch();
+  app.exit(0);
 });
 
 // NOVA Tor Route Connectivity Monitor

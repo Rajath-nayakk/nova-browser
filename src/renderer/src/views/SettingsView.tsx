@@ -73,6 +73,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [editProfileColor, setEditProfileColor] = useState('#8b5cf6');
   const [testingTor, setTestingTor] = useState(false);
   const [torStatus, setTorStatus] = useState<{ connected: boolean; latencyMs?: number; error?: string } | null>(null);
+  const [showRestartPrompt, setShowRestartPrompt] = useState(false);
 
   const showSaved = () => {
     setSavedFeedback(true);
@@ -526,6 +527,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     type="checkbox"
                     checked={settings.showClockOnNewTab !== false}
                     onChange={(e) => handleUpdate({ showClockOnNewTab: e.target.checked })}
+                    className="accent-purple-500 w-4 h-4"
+                  />
+                </label>
+              </div>
+
+              <div className="bg-[#161926] border border-gray-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">System & Hardware Acceleration</h3>
+                    <p className="text-xs text-gray-400">
+                      Utilizes GPU hardware acceleration when available to accelerate visual rendering and video playback.
+                    </p>
+                  </div>
+                  {showRestartPrompt && (
+                    <button
+                      onClick={() => window.novaAPI?.relaunchApp?.()}
+                      className="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition"
+                    >
+                      Relaunch NOVA
+                    </button>
+                  )}
+                </div>
+
+                <label className="flex items-center justify-between text-xs text-gray-300 cursor-pointer">
+                  <div>
+                    <div className="font-semibold text-white">Use Hardware Acceleration (GPU)</div>
+                    <div className="text-gray-500 text-[11px]">Disable if encountering screen tearing, visual artifacts, or GPU driver crashes.</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.hardwareAcceleration !== false}
+                    onChange={(e) => {
+                      handleUpdate({ hardwareAcceleration: e.target.checked });
+                      setShowRestartPrompt(true);
+                    }}
                     className="accent-purple-500 w-4 h-4"
                   />
                 </label>

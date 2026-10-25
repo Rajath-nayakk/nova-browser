@@ -162,6 +162,10 @@ const novaAPI = {
   checkTorConnection: (port?: number): Promise<{ connected: boolean; latencyMs?: number; error?: string }> =>
     ipcRenderer.invoke('tor:check-connection', { port }),
 
+  // System & Lifecycle
+  relaunchApp: (): Promise<void> =>
+    ipcRenderer.invoke('app:relaunch'),
+
   // Permissions
   respondToPermission: (
     id: string,
@@ -228,6 +232,11 @@ const novaAPI = {
     const handler = (_event: any, ev: BlockedRequestEvent) => callback(ev);
     ipcRenderer.on('shield:event-blocked', handler);
     return () => ipcRenderer.removeListener('shield:event-blocked', handler);
+  },
+  onTabCrashed: (callback: (data: { tabId: string; reason: string; exitCode?: number; info: any }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('tab:crashed', handler);
+    return () => ipcRenderer.removeListener('tab:crashed', handler);
   },
 };
 

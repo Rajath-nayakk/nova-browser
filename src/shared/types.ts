@@ -161,6 +161,7 @@ export interface BrowserSettings {
   clearDataOnExit: boolean;
   enableTabSuspension: boolean;
   tabSuspensionMinutes: number;
+  hardwareAcceleration: boolean;
 }
 
 export interface PrivacyShieldStats {

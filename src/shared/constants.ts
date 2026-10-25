@@ -72,6 +72,7 @@ export const DEFAULT_SETTINGS: BrowserSettings = {
   clearDataOnExit: false,
   enableTabSuspension: true,
   tabSuspensionMinutes: 30,
+  hardwareAcceleration: true,
 };
 
 export const TOP_BAR_HEIGHT_NORMAL = 86;
