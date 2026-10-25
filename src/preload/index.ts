@@ -10,6 +10,7 @@ import {
   PermissionRequest,
   PrivacyShieldStats,
   Tab,
+  BlockedRequestEvent,
 } from '../shared/types';
 
 const novaAPI = {
@@ -105,6 +106,10 @@ const novaAPI = {
     ipcRenderer.invoke('privacy:update-threat-feeds'),
   bypassThreat: (domain: string): Promise<boolean> =>
     ipcRenderer.invoke('threat:bypass', { domain }),
+  getBlockedEvents: (tabId?: string, category?: string, limit?: number): Promise<BlockedRequestEvent[]> =>
+    ipcRenderer.invoke('shield:get-blocked-events', { tabId, category, limit }),
+  clearBlockedEvents: (tabId?: string): Promise<boolean> =>
+    ipcRenderer.invoke('shield:clear-blocked-events', { tabId }),
 
   // Link Lens & TLS Security
   inspectLink: (url: string): Promise<any> =>
@@ -197,6 +202,11 @@ const novaAPI = {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('tab:found-in-page', handler);
     return () => ipcRenderer.removeListener('tab:found-in-page', handler);
+  },
+  onBlockedEvent: (callback: (event: BlockedRequestEvent) => void) => {
+    const handler = (_event: any, ev: BlockedRequestEvent) => callback(ev);
+    ipcRenderer.on('shield:event-blocked', handler);
+    return () => ipcRenderer.removeListener('shield:event-blocked', handler);
   },
 };
 

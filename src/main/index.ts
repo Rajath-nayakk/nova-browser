@@ -18,6 +18,7 @@ import { LocalStorageManager } from './storage';
 import { getTlsSecurityDetails } from './tlsInspector';
 import { performSessionDataCleanup } from './sessionCleanup';
 import { shouldSuspendTab } from './tabSuspension';
+import { shieldLogger } from './shieldLogger';
 import {
   ClearDataOptions,
   DownloadItem,
@@ -151,6 +152,21 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
       if (threat.isThreat) {
         totalTrackersBlocked++;
         trackerBreakdown.threats++;
+        let threatTabId: string | undefined;
+        for (const [id, managed] of tabs.entries()) {
+          if (managed.view && managed.view.webContents.id === details.webContentsId) {
+            threatTabId = id;
+            break;
+          }
+        }
+        const threatEv = shieldLogger.recordEvent({
+          url: details.url,
+          tabId: threatTabId,
+          category: 'threats',
+          filterRule: 'Sentinel Malware & Phishing Defense',
+          resourceType: details.resourceType,
+        });
+        mainWindow?.webContents.send('shield:event-blocked', threatEv);
         callback({ cancel: true });
         return;
       }
@@ -179,13 +195,24 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
         }
 
         // Find which tab this belongs to and increment its count
+        let matchedTabId: string | undefined;
         for (const [id, managed] of tabs.entries()) {
           if (managed.view && managed.view.webContents.id === details.webContentsId) {
+            matchedTabId = id;
             managed.tab.blockedCount = (managed.tab.blockedCount || 0) + 1;
             mainWindow?.webContents.send('tab:updated', managed.tab);
             break;
           }
         }
+
+        const blockedEv = shieldLogger.recordEvent({
+          url: details.url,
+          tabId: matchedTabId,
+          category: (match.category as any) || 'ads',
+          filterRule: match.filter || 'EasyList/EasyPrivacy',
+          resourceType: details.resourceType,
+        });
+        mainWindow?.webContents.send('shield:event-blocked', blockedEv);
 
         callback({ cancel: true });
         return;
@@ -1255,6 +1282,19 @@ ipcMain.handle('privacy:toggle-site-shield', (event, { domain, disabled }) => {
   storage.setSiteShieldDisabled(domain, disabled);
   return true;
 });
+
+// Live Blocked Elements Inspector
+ipcMain.handle('shield:get-blocked-events', (event, { tabId, category, limit } = {}) => {
+  assertAuthorizedSender(event);
+  return shieldLogger.getEvents(tabId, category, limit);
+});
+
+ipcMain.handle('shield:clear-blocked-events', (event, { tabId } = {}) => {
+  assertAuthorizedSender(event);
+  shieldLogger.clearEvents(tabId);
+  return true;
+});
+
 
 ipcMain.handle('privacy:update-filter-lists', async (event) => {
   assertAuthorizedSender(event);

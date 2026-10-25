@@ -8,6 +8,7 @@ interface PrivacyShieldPopupProps {
   onToggleSiteShield: (domain: string, disabled: boolean) => void;
   onOpenSettings: () => void;
   onOpenLinkLens?: () => void;
+  onOpenBlockedInspector?: () => void;
 }
 
 export const PrivacyShieldPopup: React.FC<PrivacyShieldPopupProps> = ({
@@ -16,6 +17,7 @@ export const PrivacyShieldPopup: React.FC<PrivacyShieldPopupProps> = ({
   onToggleSiteShield,
   onOpenSettings,
   onOpenLinkLens,
+  onOpenBlockedInspector,
 }) => {
   const isSiteShielded = !stats.isSiteWhitelisted;
   const [updating, setUpdating] = useState(false);
@@ -230,6 +232,46 @@ export const PrivacyShieldPopup: React.FC<PrivacyShieldPopupProps> = ({
           </div>
         )}
       </div>
+
+      {onOpenBlockedInspector && (
+        <button
+          onClick={() => {
+            onOpenBlockedInspector();
+            onClose();
+          }}
+          style={{
+            width: '100%',
+            marginBottom: '8px',
+            padding: '7px 10px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            color: '#f87171',
+            fontSize: '11px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <ShieldAlert size={13} />
+            <span>Live Blocked Inspector</span>
+          </div>
+          <span
+            style={{
+              fontSize: '10px',
+              padding: '1px 6px',
+              borderRadius: '10px',
+              background: 'rgba(239, 68, 68, 0.25)',
+              color: '#fca5a5',
+            }}
+          >
+            {stats.pageBlocked || stats.totalBlocked}
+          </span>
+        </button>
+      )}
 
       {/* Action Links */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>

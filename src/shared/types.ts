@@ -190,3 +190,14 @@ export interface ClearDataOptions {
   permissions: boolean;
   timeRange: '15m' | '1h' | '24h' | '7d' | 'all';
 }
+
+export interface BlockedRequestEvent {
+  id: string;
+  tabId?: string;
+  url: string;
+  domain: string;
+  category: 'ads' | 'analytics' | 'trackers' | 'cryptominers' | 'threats' | 'general';
+  filterRule?: string;
+  resourceType: string;
+  timestamp: number;
+}

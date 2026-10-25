@@ -15,6 +15,7 @@ import { AddressBar } from './AddressBar';
 import { PrivacyShieldPopup } from './PrivacyShieldPopup';
 import { DownloadsPopup } from './DownloadsPopup';
 import { MainMenu } from './MainMenu';
+import { BlockedElementsModal } from './BlockedElementsModal';
 
 interface NavbarProps {
   activeTab?: Tab;
@@ -94,6 +95,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showShieldPopup, setShowShieldPopup] = useState(false);
   const [showDownloadsPopup, setShowDownloadsPopup] = useState(false);
   const [showMainMenu, setShowMainMenu] = useState(false);
+  const [showBlockedInspector, setShowBlockedInspector] = useState(false);
 
   const canGoBack = activeTab?.canGoBack || false;
   const canGoForward = activeTab?.canGoForward || false;
@@ -308,8 +310,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           onToggleSiteShield={onToggleSiteShield}
           onOpenSettings={onOpenSettings}
           onOpenLinkLens={onOpenLinkLens}
+          onOpenBlockedInspector={() => setShowBlockedInspector(true)}
         />
       )}
+
+      <BlockedElementsModal
+        isOpen={showBlockedInspector}
+        onClose={() => setShowBlockedInspector(false)}
+        tabId={activeTab?.id}
+      />
+
 
       {showDownloadsPopup && (
         <DownloadsPopup
