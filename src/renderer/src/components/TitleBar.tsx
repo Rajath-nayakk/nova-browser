@@ -237,7 +237,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 </span>
               )}
 
-              {/* Audio Mute Indicator */}
+              {/* Audio Playback & Mute Indicator */}
               {tab.isMuted ? (
                 <button
                   onClick={(e) => {
@@ -248,11 +248,34 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                     padding: '2px',
                     color: 'var(--accent-red)',
                     borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
-                  title="Unmute tab"
+                  title="Unmute tab (click to restore sound)"
                   aria-label="Unmute tab"
                 >
                   <VolumeX size={13} />
+                </button>
+              ) : tab.isPlayingAudio ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleMute(tab.id);
+                  }}
+                  style={{
+                    padding: '2px',
+                    color: 'var(--accent-green)',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  className="animate-pulse"
+                  title="Playing audio (click to mute)"
+                  aria-label="Mute tab"
+                >
+                  <Volume2 size={13} />
                 </button>
               ) : null}
 

@@ -375,6 +375,7 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
     isSecure: isHttpsUrl(initialUrl),
     blockedCount: 0,
     isMuted: false,
+    isPlayingAudio: false,
     zoomFactor: 1.0,
     isPrivate,
   };
@@ -393,6 +394,16 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
     tabData.isLoading = false;
     tabData.canGoBack = wc.canGoBack();
     tabData.canGoForward = wc.canGoForward();
+    mainWindow?.webContents.send('tab:updated', tabData);
+  });
+
+  wc.on('media-started-playing', () => {
+    tabData.isPlayingAudio = true;
+    mainWindow?.webContents.send('tab:updated', tabData);
+  });
+
+  wc.on('media-paused', () => {
+    tabData.isPlayingAudio = false;
     mainWindow?.webContents.send('tab:updated', tabData);
   });
 

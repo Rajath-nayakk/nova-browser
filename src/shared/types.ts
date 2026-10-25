@@ -22,6 +22,7 @@ export interface Tab {
   securityDetails?: TlsSecurityDetails;
   blockedCount: number;
   isMuted: boolean;
+  isPlayingAudio?: boolean;
   zoomFactor: number;
   isPrivate?: boolean;
   isPinned?: boolean;
