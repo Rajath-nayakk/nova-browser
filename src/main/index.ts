@@ -26,6 +26,7 @@ import {
   analyzeLinkWithLens,
   extractDomain,
   extractOrigin,
+  formatErrorUrl,
   isExecutableFile,
   isHttpsUrl,
   isInternalUrl,
@@ -498,6 +499,15 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
     tabData.isSecure = false;
     tabData.certError = error;
     mainWindow?.webContents.send('tab:updated', tabData);
+  });
+
+  // Intercept network and loading failures and present native error recovery view
+  wc.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    // Ignore ERR_ABORTED (-3) as it happens on navigation redirection or user cancels
+    if (isMainFrame && errorCode !== -3 && !isInternalUrl(validatedURL)) {
+      const errUrl = formatErrorUrl(validatedURL, errorCode, errorDescription);
+      navigateTab(id, errUrl);
+    }
   });
 
   wc.on('found-in-page', (event, result) => {

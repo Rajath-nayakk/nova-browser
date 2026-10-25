@@ -13,6 +13,7 @@ import { HistoryView } from './views/HistoryView';
 import { DownloadsView } from './views/DownloadsView';
 import { SettingsView } from './views/SettingsView';
 import { WarningView } from './views/WarningView';
+import { ErrorView } from './views/ErrorView';
 import { VaultView } from './views/VaultView';
 import { LinkLensModal } from './components/LinkLensModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
@@ -371,7 +372,7 @@ export const App: React.FC = () => {
       return null;
     }
 
-    const path = activeTab.url.replace('nova://', '').toLowerCase();
+    const path = activeTab.url.replace('nova://', '').split('?')[0].toLowerCase();
 
     switch (path) {
       case 'bookmarks':
@@ -447,6 +448,14 @@ export const App: React.FC = () => {
           <WarningView
             url={activeTab?.url || ''}
             onNavigate={handleNavigate}
+          />
+        );
+      case 'error':
+        return (
+          <ErrorView
+            url={activeTab?.url || ''}
+            onNavigate={handleNavigate}
+            onReload={handleReload}
           />
         );
       case 'vault':

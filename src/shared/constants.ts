@@ -75,3 +75,4 @@ export const TOP_BAR_HEIGHT_NORMAL = 86;
 export const TOP_BAR_HEIGHT_WITH_BOOKMARKS = 118;
 export const NEW_TAB_URL = 'nova://newtab';
 export const WARNING_URL = 'nova://warning';
+export const ERROR_URL = 'nova://error';

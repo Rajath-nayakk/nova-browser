@@ -499,3 +499,96 @@ export function analyzeLinkWithLens(urlStr: string): LinkLensReport {
   }
 }
 
+export interface NetworkErrorInfo {
+  code: number;
+  description: string;
+  category: 'dns' | 'connection' | 'timeout' | 'offline' | 'ssl' | 'generic';
+  userMessage: string;
+  suggestion: string;
+}
+
+/**
+ * Categorizes and humanizes Chromium network error codes
+ */
+export function parseNetworkErrorCode(code: number, description?: string): NetworkErrorInfo {
+  const desc = (description || '').toUpperCase();
+
+  // Chromium net errors:
+  // -105: ERR_NAME_NOT_RESOLVED
+  // -106: ERR_INTERNET_DISCONNECTED
+  // -102: ERR_CONNECTION_REFUSED
+  // -100: ERR_CONNECTION_CLOSED
+  // -101: ERR_CONNECTION_RESET
+  // -118: ERR_CONNECTION_TIMED_OUT
+  // -7: ERR_TIMED_OUT
+  if (code === -105 || desc.includes('NAME_NOT_RESOLVED')) {
+    return {
+      code,
+      description: description || 'ERR_NAME_NOT_RESOLVED',
+      category: 'dns',
+      userMessage: 'Server IP address could not be found.',
+      suggestion: 'Check for typos in the address or verify your DNS server configuration.',
+    };
+  }
+
+  if (code === -106 || desc.includes('INTERNET_DISCONNECTED')) {
+    return {
+      code,
+      description: description || 'ERR_INTERNET_DISCONNECTED',
+      category: 'offline',
+      userMessage: 'You are currently offline.',
+      suggestion: 'Check your Wi-Fi, Ethernet connection, and router status.',
+    };
+  }
+
+  if (code === -102 || desc.includes('CONNECTION_REFUSED')) {
+    return {
+      code,
+      description: description || 'ERR_CONNECTION_REFUSED',
+      category: 'connection',
+      userMessage: 'Connection was refused by host.',
+      suggestion: 'The web server may be down, or a firewall/proxy might be blocking the port.',
+    };
+  }
+
+  if (code === -118 || code === -7 || desc.includes('TIMED_OUT')) {
+    return {
+      code,
+      description: description || 'ERR_CONNECTION_TIMED_OUT',
+      category: 'timeout',
+      userMessage: 'Connection timed out while waiting for a response.',
+      suggestion: 'The server took too long to reply. Check your connection or try again later.',
+    };
+  }
+
+  if (code <= -200 && code >= -299) {
+    return {
+      code,
+      description: description || 'ERR_CERTIFICATE_ERROR',
+      category: 'ssl',
+      userMessage: 'Secure connection could not be established.',
+      suggestion: 'The website presented an invalid or untrusted TLS certificate.',
+    };
+  }
+
+  return {
+    code,
+    description: description || `ERR_FAILED (${code})`,
+    category: 'generic',
+    userMessage: 'This page cannot be loaded.',
+    suggestion: 'Reload the page or verify the web address.',
+  };
+}
+
+/**
+ * Builds internal error page URL with query parameters
+ */
+export function formatErrorUrl(targetUrl: string, errorCode: number, errorDesc: string): string {
+  const params = new URLSearchParams({
+    url: targetUrl,
+    code: String(errorCode),
+    desc: errorDesc || '',
+  });
+  return `nova://error?${params.toString()}`;
+}
+
