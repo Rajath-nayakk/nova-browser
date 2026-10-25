@@ -17,11 +17,14 @@
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc --noEmit",
     "package:dir": "npm run build && electron-builder --dir",
-    "package:win": "npm run build && electron-builder --win nsis"
+    "package:win": "npm run build && electron-builder --win nsis",
+    "package:portable": "npm run build && electron-builder --win portable",
+    "package:all": "npm run build && electron-builder --win nsis portable"
   },
   "build": {
     "appId": "com.novabrowser.app",
     "productName": "NOVA Browser",
+    "copyright": "Copyright © 2026 NOVA Browser Authors",
     "directories": {
       "output": "release"
     },
@@ -34,14 +37,20 @@
         "nsis",
         "portable"
       ],
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "NOVA Browser"
+      "shortcutName": "NOVA Browser",
+      "uninstallDisplayName": "${productName}",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
     }
   },
   "devDependencies": {

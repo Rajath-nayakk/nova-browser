@@ -55,7 +55,7 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 
 ### Milestone 8: Automation, CI/CD & Cross-Platform Packaging
 - [x] **M8.1**: Create GitHub Actions CI workflow for automated linting, typechecks, and Vitest runs.
-- [ ] **M8.2**: Add release packaging automation for Windows portable and NSIS artifacts.
+- [x] **M8.2**: Add release packaging automation for Windows portable and NSIS artifacts.
 
 ---
 *Roadmap updated continuously as features are designed, implemented, tested, and committed.*
