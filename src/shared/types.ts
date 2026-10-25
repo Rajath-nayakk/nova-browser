@@ -12,6 +12,7 @@ export interface Tab {
   isMuted: boolean;
   zoomFactor: number;
   isPrivate?: boolean;
+  isPinned?: boolean;
 }
 
 export interface Bookmark {

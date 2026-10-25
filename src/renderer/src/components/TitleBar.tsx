@@ -1,5 +1,5 @@
-import React from 'react';
-import { Minus, Square, X, Plus, Volume2, VolumeX, Shield, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Minus, Square, X, Plus, Volume2, VolumeX, Shield, Lock, Pin, Copy } from 'lucide-react';
 import { Tab } from '@shared/types';
 
 interface TitleBarProps {
@@ -10,6 +10,9 @@ interface TitleBarProps {
   onCloseTab: (id: string) => void;
   onNewTab: () => void;
   onToggleMute: (id: string) => void;
+  onTogglePinTab?: (id: string) => void;
+  onDuplicateTab?: (id: string) => void;
+  onCloseOtherTabs?: (id: string) => void;
   onMinimize: () => void;
   onMaximize: () => void;
   onCloseWindow: () => void;
@@ -23,10 +26,20 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onCloseTab,
   onNewTab,
   onToggleMute,
+  onTogglePinTab,
+  onDuplicateTab,
+  onCloseOtherTabs,
   onMinimize,
   onMaximize,
   onCloseWindow,
 }) => {
+  const [contextMenu, setContextMenu] = useState<{ tabId: string; x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const isPrivate = activeTab?.isPrivate;
 
@@ -115,19 +128,25 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       >
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId;
+          const isPinned = tab.isPinned;
           return (
             <div
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setContextMenu({ tabId: tab.id, x: e.clientX, y: e.clientY });
+              }}
               style={{
                 height: '34px',
-                minWidth: '130px',
-                maxWidth: '220px',
-                flex: '0 1 180px',
+                minWidth: isPinned ? '40px' : '130px',
+                maxWidth: isPinned ? '40px' : '220px',
+                flex: isPinned ? '0 0 40px' : '0 1 180px',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: isPinned ? 'center' : 'flex-start',
                 gap: '8px',
-                padding: '0 10px',
+                padding: isPinned ? '0' : '0 10px',
                 borderRadius: '8px 8px 0 0',
                 background: isActive
                   ? 'var(--bg-surface)'
@@ -148,6 +167,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               onMouseLeave={(e) => {
                 if (!isActive) e.currentTarget.style.background = 'transparent';
               }}
+              title={tab.title || tab.url}
             >
               {/* Tab Favicon or Loading Spinner */}
               <div
@@ -158,6 +178,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
+                  position: 'relative',
                 }}
               >
                 {tab.isLoading ? (
@@ -183,22 +204,38 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 ) : (
                   <Lock size={12} style={{ color: 'var(--text-faint)' }} />
                 )}
+
+                {/* Pin indicator on pinned tabs */}
+                {isPinned && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '-3px',
+                      right: '-4px',
+                      background: 'var(--accent)',
+                      borderRadius: '50%',
+                      width: '6px',
+                      height: '6px',
+                    }}
+                  />
+                )}
               </div>
 
-              {/* Tab Title */}
-              <span
-                style={{
-                  fontSize: '12px',
-                  fontWeight: isActive ? 500 : 400,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  flex: 1,
-                }}
-                title={tab.title || tab.url}
-              >
-                {tab.title || 'New Tab'}
-              </span>
+              {/* Tab Title (hidden for pinned tabs) */}
+              {!isPinned && (
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: isActive ? 500 : 400,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    flex: 1,
+                  }}
+                >
+                  {tab.title || 'New Tab'}
+                </span>
+              )}
 
               {/* Audio Mute Indicator */}
               {tab.isMuted ? (
@@ -213,36 +250,40 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                     borderRadius: '4px',
                   }}
                   title="Unmute tab"
+                  aria-label="Unmute tab"
                 >
                   <VolumeX size={13} />
                 </button>
               ) : null}
 
-              {/* Close Tab Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCloseTab(tab.id);
-                }}
-                style={{
-                  width: '18px',
-                  height: '18px',
-                  borderRadius: '4px',
-                  padding: 0,
-                  color: 'var(--text-muted)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
-                  e.currentTarget.style.color = '#f87171';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-muted)';
-                }}
-                title="Close tab (Ctrl+W)"
-              >
-                <X size={12} />
-              </button>
+              {/* Close Tab Button (hidden for pinned tabs) */}
+              {!isPinned && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCloseTab(tab.id);
+                  }}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '4px',
+                    padding: 0,
+                    color: 'var(--text-muted)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                    e.currentTarget.style.color = '#f87171';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = 'var(--text-muted)';
+                  }}
+                  title="Close tab (Ctrl+W)"
+                  aria-label="Close tab"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </div>
           );
         })}
@@ -340,6 +381,140 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           <X size={15} />
         </button>
       </div>
+
+      {/* Tab Context Menu */}
+      {contextMenu && (
+        <div
+          className="glass animate-fade-in"
+          style={{
+            position: 'fixed',
+            top: `${contextMenu.y}px`,
+            left: `${contextMenu.x}px`,
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--bg-surface-elevated)',
+            border: '1px solid var(--border-color)',
+            boxShadow: 'var(--shadow-lg)',
+            zIndex: 9999,
+            minWidth: '170px',
+            padding: '4px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {(() => {
+            const targetTab = tabs.find((t) => t.id === contextMenu.tabId);
+            if (!targetTab) return null;
+            return (
+              <>
+                <button
+                  onClick={() => {
+                    onTogglePinTab?.(targetTab.id);
+                    setContextMenu(null);
+                  }}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: '12px',
+                    borderRadius: 'var(--radius-xs)',
+                    justifyContent: 'flex-start',
+                    gap: '8px',
+                    color: 'var(--text-main)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <Pin size={13} />
+                  {targetTab.isPinned ? 'Unpin tab' : 'Pin tab'}
+                </button>
+
+                <button
+                  onClick={() => {
+                    onDuplicateTab?.(targetTab.id);
+                    setContextMenu(null);
+                  }}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: '12px',
+                    borderRadius: 'var(--radius-xs)',
+                    justifyContent: 'flex-start',
+                    gap: '8px',
+                    color: 'var(--text-main)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <Copy size={13} />
+                  Duplicate tab
+                </button>
+
+                <button
+                  onClick={() => {
+                    onToggleMute(targetTab.id);
+                    setContextMenu(null);
+                  }}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: '12px',
+                    borderRadius: 'var(--radius-xs)',
+                    justifyContent: 'flex-start',
+                    gap: '8px',
+                    color: 'var(--text-main)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  {targetTab.isMuted ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                  {targetTab.isMuted ? 'Unmute tab' : 'Mute tab'}
+                </button>
+
+                <div style={{ height: '1px', background: 'var(--border-color)', margin: '2px 0' }} />
+
+                <button
+                  onClick={() => {
+                    onCloseTab(targetTab.id);
+                    setContextMenu(null);
+                  }}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: '12px',
+                    borderRadius: 'var(--radius-xs)',
+                    justifyContent: 'flex-start',
+                    gap: '8px',
+                    color: '#f87171',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <X size={13} />
+                  Close tab
+                </button>
+
+                {tabs.length > 1 && (
+                  <button
+                    onClick={() => {
+                      onCloseOtherTabs?.(targetTab.id);
+                      setContextMenu(null);
+                    }}
+                    style={{
+                      padding: '6px 10px',
+                      fontSize: '12px',
+                      borderRadius: 'var(--radius-xs)',
+                      justifyContent: 'flex-start',
+                      gap: '8px',
+                      color: 'var(--text-muted)',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    Close other tabs
+                  </button>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 };

@@ -153,6 +153,27 @@ export const App: React.FC = () => {
     api?.toggleMute(id);
   }, [api]);
 
+  const handleTogglePinTab = useCallback((id: string) => {
+    setTabs((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, isPinned: !t.isPinned } : t))
+    );
+  }, []);
+
+  const handleDuplicateTab = useCallback((id: string) => {
+    const tabToDuplicate = tabs.find((t) => t.id === id);
+    if (tabToDuplicate) {
+      api?.createTab(tabToDuplicate.url);
+    }
+  }, [api, tabs]);
+
+  const handleCloseOtherTabs = useCallback((id: string) => {
+    tabs.forEach((t) => {
+      if (t.id !== id && !t.isPinned) {
+        api?.closeTab(t.id);
+      }
+    });
+  }, [api, tabs]);
+
   const handleNavigate = useCallback((url: string) => {
     if (activeTabId) {
       api?.navigateTab(activeTabId, url);
@@ -461,6 +482,9 @@ export const App: React.FC = () => {
         onCloseTab={handleCloseTab}
         onNewTab={handleNewTab}
         onToggleMute={handleToggleMute}
+        onTogglePinTab={handleTogglePinTab}
+        onDuplicateTab={handleDuplicateTab}
+        onCloseOtherTabs={handleCloseOtherTabs}
         onMinimize={() => api?.minimize()}
         onMaximize={() => api?.maximize()}
         onCloseWindow={() => api?.closeWindow()}
