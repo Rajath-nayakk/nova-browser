@@ -395,37 +395,23 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
     mainWindow?.webContents.send('tab:updated', tabData);
   });
 
-  // Inject cosmetic CSS and YouTube ad-skipping logic when page finishes loading
-  wc.on('did-finish-load', () => {
+  // Inject cosmetic CSS and anti-circumvention scriptlets when page is ready
+  const injectProtections = () => {
     const navUrl = wc.getURL();
     if (!isInternalUrl(navUrl) && filterEngine) {
       const cosmeticCss = filterEngine.getCosmeticFilters(navUrl);
       if (cosmeticCss) {
         wc.insertCSS(cosmeticCss).catch(() => {});
       }
-      if (navUrl.includes('youtube.com')) {
-        wc.executeJavaScript(`
-          (() => {
-            if (window.__nova_ad_shield_active) return;
-            window.__nova_ad_shield_active = true;
-            const checkAndSkip = () => {
-              const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, button.ytp-ad-skip-button');
-              if (skipBtn) (skipBtn as HTMLElement).click();
-              const video = document.querySelector('video');
-              const adShowing = document.querySelector('.ad-showing, .ytp-ad-player-overlay');
-              if (adShowing && video && video.duration && !video.paused) {
-                video.muted = true;
-                video.currentTime = video.duration;
-              }
-              const closeBtn = document.querySelector('.ytp-ad-overlay-close-button');
-              if (closeBtn) (closeBtn as HTMLElement).click();
-            };
-            setInterval(checkAndSkip, 400);
-          })();
-        `).catch(() => {});
+      const scriptlets = filterEngine.getScriptlets(navUrl);
+      if (scriptlets) {
+        wc.executeJavaScript(scriptlets).catch(() => {});
       }
     }
-  });
+  };
+
+  wc.on('dom-ready', injectProtections);
+  wc.on('did-finish-load', injectProtections);
 
   // Intercept and prevent dangerous navigations and phishing/malware threats
   wc.on('will-navigate', (event, navigationUrl) => {

@@ -418,6 +418,128 @@ export class FilterEngineManager {
   }
 
   /**
+   * Generates anti-circumvention and anti-adblock defusing scriptlets.
+   * Defuses common anti-adblock detection scripts and handles video ad evasion safely.
+   */
+  public getScriptlets(urlStr: string, hostname?: string): string {
+    const host = (hostname || extractDomain(urlStr)).toLowerCase();
+
+    // Core anti-adblock defusing scriptlet injected into all webpages
+    let scriptlet = `(() => {
+  try {
+    if (window.__nova_scriptlets_injected) return;
+    window.__nova_scriptlets_injected = true;
+
+    // 1. Defuse common anti-adblock trap flags
+    window.canRunAds = true;
+    window.isAdBlockActive = false;
+    window.__adblocker_detected = false;
+    window.google_ad_status = 1;
+
+    // 2. Mock Google AdSense / DoubleClick global stubs
+    if (!window.adsbygoogle) {
+      window.adsbygoogle = [];
+    }
+    try {
+      Object.defineProperty(window.adsbygoogle, 'loaded', {
+        get: () => true,
+        configurable: true,
+      });
+    } catch {}
+
+    // 3. Defuse FuckAdBlock / BlockAdBlock / DetectAdBlock prototypes
+    const noopInstance = {
+      on: () => noopInstance,
+      onDetected: () => noopInstance,
+      onNotDetected: (fn) => { if (typeof fn === 'function') setTimeout(fn, 10); return noopInstance; },
+      check: () => true,
+      clearEvent: () => {},
+    };
+    window.FuckAdBlock = function() { return noopInstance; };
+    window.BlockAdBlock = function() { return noopInstance; };
+    window.fuckAdBlock = noopInstance;
+    window.blockAdBlock = noopInstance;
+
+    // 4. Neutralize anti-adblock modal backdrops and dismiss lockouts
+    const neutralizeModals = () => {
+      const selectors = [
+        '.adblock-modal',
+        '.adblock-overlay',
+        '#adblock-notice',
+        '.adblock-blocker',
+        '[id*="adblock-overlay"]',
+        'ytd-enforcement-message-view-model',
+      ];
+      for (const sel of selectors) {
+        const els = document.querySelectorAll(sel);
+        for (let i = 0; i < els.length; i++) {
+          const el = els[i];
+          if (el && el.parentNode) {
+            el.style.setProperty('display', 'none', 'important');
+            el.style.setProperty('visibility', 'hidden', 'important');
+          }
+        }
+      }
+      if (document.body && document.body.style.overflow === 'hidden') {
+        document.body.style.setProperty('overflow', 'auto', 'important');
+      }
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', neutralizeModals, { once: true });
+    } else {
+      neutralizeModals();
+    }
+  } catch {}
+})();
+`;
+
+    // Specialized Video Player Anti-Circumvention (e.g. YouTube)
+    if (host.includes('youtube.com')) {
+      scriptlet += `(() => {
+  try {
+    if (window.__nova_yt_shield_active) return;
+    window.__nova_yt_shield_active = true;
+
+    const handleYouTubeAds = () => {
+      // A. Skip button auto-trigger
+      const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, button.ytp-ad-skip-button');
+      if (skipBtn && typeof skipBtn.click === 'function') {
+        skipBtn.click();
+      }
+
+      // B. Fast-forward & mute unskippable ad video stream
+      const adElement = document.querySelector('.ad-showing, .ad-interrupting, .ytp-ad-player-overlay');
+      const video = document.querySelector('video');
+      if (adElement && video && !video.paused && Number.isFinite(video.duration)) {
+        video.muted = true;
+        video.playbackRate = 16.0;
+        video.currentTime = video.duration;
+      }
+
+      // C. Close overlay ad banners
+      const closeOverlayBtn = document.querySelector('.ytp-ad-overlay-close-button');
+      if (closeOverlayBtn && typeof closeOverlayBtn.click === 'function') {
+        closeOverlayBtn.click();
+      }
+
+      // D. Dismiss enforcement prompt dialogs
+      const dismissBtn = document.querySelector('ytd-enforcement-message-view-model button');
+      if (dismissBtn && typeof dismissBtn.click === 'function') {
+        dismissBtn.click();
+      }
+    };
+
+    setInterval(handleYouTubeAds, 350);
+  } catch {}
+})();
+`;
+    }
+
+    return scriptlet;
+  }
+
+  /**
    * Safely fetches and updates filter lists over HTTPS from official sources.
    * If an update fails or data is corrupted, retains the last known-good rules.
    */
