@@ -57,5 +57,39 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [x] **M8.1**: Create GitHub Actions CI workflow for automated linting, typechecks, and Vitest runs.
 - [x] **M8.2**: Add release packaging automation for Windows portable and NSIS artifacts.
 
+### Milestone 9: Distraction-Free Reader Mode & Article Extraction
+- [ ] **M9.1**: Implement article extraction heuristic engine (`src/shared/readerExtractor.ts`) stripping ads, sidebars, and popups.
+- [ ] **M9.2**: Build internal Reader Mode view (`nova://reader`) with customizable font sizes, serif/sans-serif typography, and sepia/dark themes.
+- [ ] **M9.3**: Add AddressBar quick "Toggle Reader Mode" action button when an article payload is detected.
+
+### Milestone 10: Tor Routing Circuit Status & Onion Domain Dispatcher
+- [ ] **M10.1**: Implement `.onion` domain validation and automatic proxy routing dispatcher.
+- [ ] **M10.2**: Add Tor circuit health monitor and connection indicator in Network Settings.
+
+### Milestone 11: Tab Grouping & Multi-Tab Workspace Organization
+- [ ] **M11.1**: Define tab grouping data models (`TabGroup`, `groupId`, `color`, `isCollapsed`) in shared types.
+- [ ] **M11.2**: Implement tab group creation, naming, and color assignment via tab context menu.
+- [ ] **M11.3**: Add group expand/collapse animation in TitleBar tab strip to declutter heavy workflows.
+
+### Milestone 12: Offline Omnibox Search Suggestions & Keyword Engines
+- [ ] **M12.1**: Implement local fuzzy search index for matching bookmarks and history titles directly from the address bar.
+- [ ] **M12.2**: Add custom search engine keyword prefix shortcuts (e.g. `@w` for Wikipedia, `@d` for DuckDuckGo, `@gh` for GitHub).
+
+### Milestone 13: Hardware Acceleration Tuning & GPU Crash Recovery
+- [ ] **M13.1**: Add configurable hardware acceleration toggle in Settings with safe restart prompting.
+- [ ] **M13.2**: Implement automatic GPU / renderer process crash detection with graceful tab recovery prompts.
+
+### Milestone 14: Cookie Auto-Expiry & Granular Site Storage Inspector
+- [ ] **M14.1**: Build site storage inspector showing exact cookies, localStorage, and IndexedDB usage per origin.
+- [ ] **M14.2**: Implement automated tracker cookie auto-expiry policy (expire third-party cookies after 24 hours).
+
+### Milestone 15: Developer Tools & Local Security Audit Suite
+- [ ] **M15.1**: Add Content Security Policy (CSP) violation auditor in diagnostic log viewer.
+- [ ] **M15.2**: Add per-tab resource network payload size and security inspector in Shield details.
+
+### Milestone 16: Comprehensive Architecture & Security Documentation
+- [ ] **M16.1**: Create detailed IPC security boundaries and threat model documentation (`docs/SECURITY.md`).
+- [ ] **M16.2**: Create comprehensive developer onboarding and architecture guide (`docs/ARCHITECTURE.md`).
+
 ---
 *Roadmap updated continuously as features are designed, implemented, tested, and committed.*
