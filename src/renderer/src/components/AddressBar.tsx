@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, AlertTriangle, Star, Search, Globe, Shield, X } from 'lucide-react';
+import { Lock, AlertTriangle, Star, Search, Globe, Shield, X, Copy, Check } from 'lucide-react';
 import { Bookmark, HistoryItem, Tab } from '@shared/types';
-import { extractDomain, isHttpsUrl, isInternalUrl } from '@shared/validation';
+import { extractDomain, isHttpsUrl, isInternalUrl, stripTrackingParameters } from '@shared/validation';
+import { useToast } from './Toast';
 
 interface AddressBarProps {
   activeTab?: Tab;
@@ -23,6 +24,8 @@ export const AddressBar: React.FC<AddressBarProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [showSecurityInfo, setShowSecurityInfo] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const { showToast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -30,6 +33,23 @@ export const AddressBar: React.FC<AddressBarProps> = ({
   const isInternal = isInternalUrl(currentUrl);
   const domain = extractDomain(currentUrl);
   const isSecure = activeTab ? isHttpsUrl(activeTab.url) && !activeTab.certError : false;
+
+  const handleCopyCleanUrl = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!currentUrl) return;
+
+    const clean = stripTrackingParameters(currentUrl);
+    navigator.clipboard.writeText(clean);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+
+    if (clean !== currentUrl) {
+      showToast('Clean URL copied (tracking tokens removed)', 'success');
+    } else {
+      showToast('URL copied to clipboard', 'info');
+    }
+  };
 
   // Sync address bar input with active tab URL when not focused
   useEffect(() => {
@@ -183,8 +203,26 @@ export const AddressBar: React.FC<AddressBarProps> = ({
                 borderRadius: '4px',
               }}
               title={isBookmarked ? 'Remove Bookmark' : 'Bookmark this tab (Ctrl+D)'}
+              aria-label={isBookmarked ? 'Remove Bookmark' : 'Bookmark this tab'}
             >
               <Star size={15} fill={isBookmarked ? '#f59e0b' : 'none'} />
+            </button>
+          )}
+
+          {/* Copy Clean URL Button */}
+          {!isInternal && currentUrl && (
+            <button
+              type="button"
+              onClick={handleCopyCleanUrl}
+              style={{
+                color: copiedUrl ? 'var(--accent-green)' : 'var(--text-muted)',
+                padding: '4px',
+                borderRadius: '4px',
+              }}
+              title="Copy Clean URL (strips tracking parameters)"
+              aria-label="Copy Clean URL"
+            >
+              {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
             </button>
           )}
         </div>
