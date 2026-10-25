@@ -70,6 +70,8 @@ export const DEFAULT_SETTINGS: BrowserSettings = {
   focusDurationMinutes: 25,
   showClockOnNewTab: true,
   clearDataOnExit: false,
+  enableTabSuspension: true,
+  tabSuspensionMinutes: 30,
 };
 
 export const TOP_BAR_HEIGHT_NORMAL = 86;

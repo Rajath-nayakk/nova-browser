@@ -17,6 +17,7 @@ import { LocalVaultManager } from './vault';
 import { LocalStorageManager } from './storage';
 import { getTlsSecurityDetails } from './tlsInspector';
 import { performSessionDataCleanup } from './sessionCleanup';
+import { shouldSuspendTab } from './tabSuspension';
 import {
   ClearDataOptions,
   DownloadItem,
@@ -66,7 +67,8 @@ function assertAuthorizedSender(event: Electron.IpcMainInvokeEvent): void {
 // Tab Management State
 interface ManagedTab {
   tab: Tab;
-  view: WebContentsView;
+  view: WebContentsView | null;
+  lastActiveTime?: number;
 }
 
 const tabs = new Map<string, ManagedTab>();
@@ -94,7 +96,7 @@ function getTopBarHeight(): number {
 function updateActiveViewBounds(): void {
   if (!mainWindow || !activeTabId) return;
   const managed = tabs.get(activeTabId);
-  if (!managed) return;
+  if (!managed || !managed.view || managed.tab.isSuspended) return;
 
   const [winWidth, winHeight] = mainWindow.getContentSize();
   const topBarHeight = getTopBarHeight();
@@ -177,7 +179,7 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
 
         // Find which tab this belongs to and increment its count
         for (const [id, managed] of tabs.entries()) {
-          if (managed.view.webContents.id === details.webContentsId) {
+          if (managed.view && managed.view.webContents.id === details.webContentsId) {
             managed.tab.blockedCount = (managed.tab.blockedCount || 0) + 1;
             mainWindow?.webContents.send('tab:updated', managed.tab);
             break;
@@ -252,7 +254,7 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
     // Find tabId
     let targetTabId = '';
     for (const [id, m] of tabs.entries()) {
-      if (m.view.webContents.id === webContents.id) {
+      if (m.view && m.view.webContents.id === webContents.id) {
         targetTabId = id;
         break;
       }
@@ -341,12 +343,11 @@ function setupSessionShield(targetSession: Electron.Session, isPrivate = false):
   });
 }
 
-function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
-  const id = `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+function createWebContentsViewForTab(tabData: Tab): WebContentsView {
   const settings = storage.getSettings();
 
   let tabSession: Electron.Session;
-  if (isPrivate) {
+  if (tabData.isPrivate) {
     tabSession = session.fromPartition(`incognito-${Date.now()}`, { cache: false });
   } else {
     const activeProfile = settings.profiles?.find((p) => p.id === settings.activeProfileId);
@@ -354,7 +355,7 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
     tabSession = session.fromPartition(partition);
   }
 
-  setupSessionShield(tabSession, isPrivate);
+  setupSessionShield(tabSession, tabData.isPrivate);
 
   const view = new WebContentsView({
     webPreferences: {
@@ -367,24 +368,6 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
     },
   });
 
-  const tabData: Tab = {
-    id,
-    url: initialUrl,
-    title: initialUrl === NEW_TAB_URL ? 'New Tab' : initialUrl,
-    isLoading: false,
-    canGoBack: false,
-    canGoForward: false,
-    isSecure: isHttpsUrl(initialUrl),
-    blockedCount: 0,
-    isMuted: false,
-    isPlayingAudio: false,
-    zoomFactor: 1.0,
-    isPrivate,
-  };
-
-  tabs.set(id, { tab: tabData, view });
-
-  // Hook WebContents navigation events
   const wc = view.webContents;
 
   wc.on('did-start-loading', () => {
@@ -425,7 +408,7 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
 
     if (isHttpsUrl(navUrl)) {
       getTlsSecurityDetails(navUrl).then((tlsInfo) => {
-        if (tlsInfo && tabs.has(id)) {
+        if (tlsInfo && tabs.has(tabData.id)) {
           tabData.securityDetails = tlsInfo;
           mainWindow?.webContents.send('tab:updated', tabData);
         }
@@ -449,7 +432,7 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
       if (threat.isThreat) {
         event.preventDefault();
         const warnUrl = `${WARNING_URL}?url=${encodeURIComponent(navigationUrl)}&threat=${threat.category || 'malware'}&reason=${encodeURIComponent(threat.reason || '')}&domain=${encodeURIComponent(threat.domain || '')}`;
-        navigateTab(id, warnUrl);
+        navigateTab(tabData.id, warnUrl);
         return;
       }
     }
@@ -463,7 +446,7 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
     tabData.title = wc.getTitle() || navigatedUrl;
 
     // Record to history if valid URL and not private
-    if (!isPrivate && !isInternalUrl(navigatedUrl)) {
+    if (!tabData.isPrivate && !isInternalUrl(navigatedUrl)) {
       storage.addHistory({
         title: tabData.title,
         url: navigatedUrl,
@@ -507,13 +490,13 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
     // Ignore ERR_ABORTED (-3) as it happens on navigation redirection or user cancels
     if (isMainFrame && errorCode !== -3 && !isInternalUrl(validatedURL)) {
       const errUrl = formatErrorUrl(validatedURL, errorCode, errorDescription);
-      navigateTab(id, errUrl);
+      navigateTab(tabData.id, errUrl);
     }
   });
 
   wc.on('found-in-page', (event, result) => {
     mainWindow?.webContents.send('tab:found-in-page', {
-      tabId: id,
+      tabId: tabData.id,
       result: {
         activeMatchOrdinal: result.activeMatchOrdinal,
         matches: result.matches,
@@ -528,26 +511,90 @@ function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
       console.warn(`Blocked unsafe window.open attempt to: ${details.url}`);
       return { action: 'deny' };
     }
-    createTab(details.url, isPrivate);
+    createTab(details.url, tabData.isPrivate);
     return { action: 'deny' };
   });
 
-  if (!isInternalUrl(initialUrl)) {
-    if (isSafeNavigationUrl(initialUrl)) {
-      wc.loadURL(initialUrl).catch((err) => {
-        console.warn(`Failed to load ${initialUrl}:`, err);
+  if (!isInternalUrl(tabData.url)) {
+    if (isSafeNavigationUrl(tabData.url)) {
+      wc.loadURL(tabData.url).catch((err) => {
+        console.warn(`Failed to load ${tabData.url}:`, err);
       });
     }
   }
 
+  return view;
+}
+
+function createTab(initialUrl: string = NEW_TAB_URL, isPrivate = false): Tab {
+  const id = `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const tabData: Tab = {
+    id,
+    url: initialUrl,
+    title: initialUrl === NEW_TAB_URL ? 'New Tab' : initialUrl,
+    isLoading: false,
+    canGoBack: false,
+    canGoForward: false,
+    isSecure: isHttpsUrl(initialUrl),
+    blockedCount: 0,
+    isMuted: false,
+    isPlayingAudio: false,
+    zoomFactor: 1.0,
+    isPrivate,
+    isSuspended: false,
+  };
+
+  const view = createWebContentsViewForTab(tabData);
+  tabs.set(id, { tab: tabData, view, lastActiveTime: Date.now() });
+
   return tabData;
+}
+
+function suspendTab(id: string): boolean {
+  if (id === activeTabId) return false;
+  const managed = tabs.get(id);
+  if (!managed || managed.tab.isSuspended || !managed.view) return false;
+  if (managed.tab.isPinned || managed.tab.isPlayingAudio || isInternalUrl(managed.tab.url)) return false;
+
+  if (mainWindow && managed.view) {
+    try {
+      mainWindow.contentView.removeChildView(managed.view);
+    } catch {
+      // ignore
+    }
+  }
+
+  try {
+    (managed.view.webContents as any).close?.();
+  } catch {
+    // ignore
+  }
+
+  managed.view = null;
+  managed.tab.isSuspended = true;
+  mainWindow?.webContents.send('tab:updated', managed.tab);
+  return true;
+}
+
+function wakeTab(id: string): boolean {
+  const managed = tabs.get(id);
+  if (!managed || !managed.tab.isSuspended) return false;
+
+  managed.tab.isSuspended = false;
+  managed.view = createWebContentsViewForTab(managed.tab);
+  managed.lastActiveTime = Date.now();
+  mainWindow?.webContents.send('tab:updated', managed.tab);
+  return true;
 }
 
 function switchTab(id: string): void {
   if (!tabs.has(id)) return;
+  const managed = tabs.get(id);
+  if (!managed) return;
 
   const prevTab = tabs.get(activeTabId);
-  if (prevTab && mainWindow) {
+  if (prevTab && mainWindow && prevTab.view) {
     try {
       mainWindow.contentView.removeChildView(prevTab.view);
     } catch {
@@ -555,7 +602,12 @@ function switchTab(id: string): void {
     }
   }
 
+  if (managed.tab.isSuspended) {
+    wakeTab(id);
+  }
+
   activeTabId = id;
+  managed.lastActiveTime = Date.now();
   updateActiveViewBounds();
   mainWindow?.webContents.send('tab:switched', id);
 }
@@ -568,7 +620,7 @@ function closeTab(id: string): void {
     recentlyClosedTabs.push(managed.tab.url);
   }
 
-  if (mainWindow) {
+  if (mainWindow && managed.view) {
     try {
       mainWindow.contentView.removeChildView(managed.view);
     } catch {
@@ -577,10 +629,12 @@ function closeTab(id: string): void {
   }
 
   // Close webContents safely
-  try {
-    (managed.view.webContents as any).close?.();
-  } catch {
-    // ignore
+  if (managed.view) {
+    try {
+      (managed.view.webContents as any).close?.();
+    } catch {
+      // ignore
+    }
   }
 
   tabs.delete(id);
@@ -601,6 +655,10 @@ function closeTab(id: string): void {
 function navigateTab(id: string, rawInput: string): void {
   const managed = tabs.get(id);
   if (!managed) return;
+
+  if (managed.tab.isSuspended) {
+    wakeTab(id);
+  }
 
   const settings = storage.getSettings();
   let finalUrl = normalizeUserInput(
@@ -635,7 +693,7 @@ function navigateTab(id: string, rawInput: string): void {
         ? 'New Tab'
         : finalUrl.replace('nova://', '').toUpperCase();
     managed.tab.isSecure = true;
-    if (mainWindow) {
+    if (mainWindow && managed.view) {
       try {
         mainWindow.contentView.removeChildView(managed.view);
       } catch {
@@ -645,7 +703,7 @@ function navigateTab(id: string, rawInput: string): void {
     mainWindow?.webContents.send('tab:updated', managed.tab);
   } else {
     updateActiveViewBounds();
-    managed.view.webContents.loadURL(finalUrl).catch((err) => {
+    managed.view?.webContents.loadURL(finalUrl).catch((err) => {
       console.warn(`Failed to navigate to ${finalUrl}:`, err);
     });
   }
@@ -734,6 +792,22 @@ app.whenReady().then(() => {
       mainWindow = createMainWindow();
     }
   });
+
+  // Periodic background tab memory suspension
+  setInterval(() => {
+    if (!storage) return;
+    const settings = storage.getSettings();
+    if (!settings.enableTabSuspension) return;
+
+    const timeoutMs = (settings.tabSuspensionMinutes || 30) * 60 * 1000;
+    const now = Date.now();
+
+    for (const [id, m] of tabs.entries()) {
+      if (shouldSuspendTab(m.tab, m.lastActiveTime || now, activeTabId, timeoutMs, now)) {
+        suspendTab(id);
+      }
+    }
+  }, 60 * 1000);
 });
 
 app.on('window-all-closed', () => {
@@ -785,7 +859,7 @@ ipcMain.handle('tab:navigate', (event, { id, url }) => {
 ipcMain.handle('tab:back', (event, { id }) => {
   assertAuthorizedSender(event);
   const m = tabs.get(id);
-  if (m && m.view.webContents.canGoBack()) {
+  if (m && m.view && m.view.webContents.canGoBack()) {
     m.view.webContents.goBack();
   }
 });
@@ -793,7 +867,7 @@ ipcMain.handle('tab:back', (event, { id }) => {
 ipcMain.handle('tab:forward', (event, { id }) => {
   assertAuthorizedSender(event);
   const m = tabs.get(id);
-  if (m && m.view.webContents.canGoForward()) {
+  if (m && m.view && m.view.webContents.canGoForward()) {
     m.view.webContents.goForward();
   }
 });
@@ -802,14 +876,18 @@ ipcMain.handle('tab:reload', (event, { id }) => {
   assertAuthorizedSender(event);
   const m = tabs.get(id);
   if (m) {
-    m.view.webContents.reload();
+    if (m.tab.isSuspended) {
+      wakeTab(id);
+    } else if (m.view) {
+      m.view.webContents.reload();
+    }
   }
 });
 
 ipcMain.handle('tab:stop', (event, { id }) => {
   assertAuthorizedSender(event);
   const m = tabs.get(id);
-  if (m) {
+  if (m && m.view) {
     m.view.webContents.stop();
   }
 });
@@ -818,7 +896,9 @@ ipcMain.handle('tab:set-zoom', (event, { id, factor }) => {
   assertAuthorizedSender(event);
   const m = tabs.get(id);
   if (m && typeof factor === 'number' && factor >= 0.25 && factor <= 5.0) {
-    m.view.webContents.setZoomFactor(factor);
+    if (m.view) {
+      m.view.webContents.setZoomFactor(factor);
+    }
     m.tab.zoomFactor = factor;
     mainWindow?.webContents.send('tab:updated', m.tab);
   }
@@ -828,8 +908,10 @@ ipcMain.handle('tab:toggle-mute', (event, { id }) => {
   assertAuthorizedSender(event);
   const m = tabs.get(id);
   if (m) {
-    const nextMuted = !m.view.webContents.isAudioMuted();
-    m.view.webContents.setAudioMuted(nextMuted);
+    const nextMuted = m.view ? !m.view.webContents.isAudioMuted() : !m.tab.isMuted;
+    if (m.view) {
+      m.view.webContents.setAudioMuted(nextMuted);
+    }
     m.tab.isMuted = nextMuted;
     mainWindow?.webContents.send('tab:updated', m.tab);
   }
@@ -838,7 +920,7 @@ ipcMain.handle('tab:toggle-mute', (event, { id }) => {
 ipcMain.handle('tab:open-devtools', (event, { id }) => {
   assertAuthorizedSender(event);
   const m = tabs.get(id);
-  if (m) {
+  if (m && m.view) {
     if (m.view.webContents.isDevToolsOpened()) {
       m.view.webContents.closeDevTools();
     } else {
@@ -850,7 +932,7 @@ ipcMain.handle('tab:open-devtools', (event, { id }) => {
 ipcMain.handle('tab:find', (event, { id, text, forward, findNext }) => {
   assertAuthorizedSender(event);
   const m = tabs.get(id);
-  if (m && typeof text === 'string') {
+  if (m && m.view && typeof text === 'string') {
     m.view.webContents.findInPage(text, {
       forward: forward !== false,
       findNext: findNext === true,
@@ -861,9 +943,19 @@ ipcMain.handle('tab:find', (event, { id, text, forward, findNext }) => {
 ipcMain.handle('tab:stop-find', (event, { id }) => {
   assertAuthorizedSender(event);
   const m = tabs.get(id);
-  if (m) {
+  if (m && m.view) {
     m.view.webContents.stopFindInPage('clearSelection');
   }
+});
+
+ipcMain.handle('tab:suspend', (event, { id }) => {
+  assertAuthorizedSender(event);
+  return suspendTab(id);
+});
+
+ipcMain.handle('tab:wake', (event, { id }) => {
+  assertAuthorizedSender(event);
+  return wakeTab(id);
 });
 
 ipcMain.handle('tab:reopen-closed', (event) => {

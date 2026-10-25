@@ -26,6 +26,7 @@ export interface Tab {
   zoomFactor: number;
   isPrivate?: boolean;
   isPinned?: boolean;
+  isSuspended?: boolean;
 }
 
 export interface Bookmark {
@@ -135,6 +136,8 @@ export interface BrowserSettings {
   focusDurationMinutes: number;
   showClockOnNewTab: boolean;
   clearDataOnExit: boolean;
+  enableTabSuspension: boolean;
+  tabSuspensionMinutes: number;
 }
 
 export interface PrivacyShieldStats {

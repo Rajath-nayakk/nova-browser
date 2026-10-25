@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Minus, Square, X, Plus, Volume2, VolumeX, Shield, Lock, Pin, Copy } from 'lucide-react';
+import { Minus, Square, X, Plus, Volume2, VolumeX, Shield, Lock, Pin, Copy, Moon } from 'lucide-react';
 import { Tab } from '@shared/types';
 
 interface TitleBarProps {
@@ -159,7 +159,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                 borderRight: isActive ? '1px solid var(--border-color)' : '1px solid transparent',
                 cursor: 'pointer',
                 position: 'relative',
-                transition: 'background 0.15s ease',
+                opacity: tab.isSuspended && !isActive ? 0.72 : 1,
+                transition: 'background 0.15s ease, opacity 0.2s ease',
               }}
               onMouseEnter={(e) => {
                 if (!isActive) e.currentTarget.style.background = 'var(--bg-surface-hover)';
@@ -167,7 +168,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               onMouseLeave={(e) => {
                 if (!isActive) e.currentTarget.style.background = 'transparent';
               }}
-              title={tab.title || tab.url}
+              title={tab.isSuspended ? `[Sleeping] ${tab.title || tab.url}` : (tab.title || tab.url)}
             >
               {/* Tab Favicon or Loading Spinner */}
               <div
@@ -231,9 +232,26 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     flex: 1,
+                    fontStyle: tab.isSuspended ? 'italic' : 'normal',
                   }}
                 >
                   {tab.title || 'New Tab'}
+                </span>
+              )}
+
+              {/* Sleeping / Suspended indicator */}
+              {tab.isSuspended && (
+                <span
+                  title="Tab sleeping to save memory"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: '#38bdf8',
+                    opacity: 0.85,
+                    flexShrink: 0,
+                  }}
+                >
+                  <Moon size={11} />
                 </span>
               )}
 
@@ -490,6 +508,32 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                   {targetTab.isMuted ? <Volume2 size={13} /> : <VolumeX size={13} />}
                   {targetTab.isMuted ? 'Unmute tab' : 'Mute tab'}
                 </button>
+
+                {targetTab.id !== activeTabId && !targetTab.url.startsWith('nova://') && (
+                  <button
+                    onClick={() => {
+                      if (targetTab.isSuspended) {
+                        window.novaAPI?.wakeTab(targetTab.id);
+                      } else {
+                        window.novaAPI?.suspendTab(targetTab.id);
+                      }
+                      setContextMenu(null);
+                    }}
+                    style={{
+                      padding: '6px 10px',
+                      fontSize: '12px',
+                      borderRadius: 'var(--radius-xs)',
+                      justifyContent: 'flex-start',
+                      gap: '8px',
+                      color: targetTab.isSuspended ? '#38bdf8' : 'var(--text-main)',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <Moon size={13} />
+                    {targetTab.isSuspended ? 'Awaken tab' : 'Suspend tab (free RAM)'}
+                  </button>
+                )}
 
                 <div style={{ height: '1px', background: 'var(--border-color)', margin: '2px 0' }} />
 

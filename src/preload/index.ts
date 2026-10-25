@@ -42,6 +42,10 @@ const novaAPI = {
     ipcRenderer.invoke('tab:stop-find', { id }),
   reopenClosedTab: (): Promise<Tab | null> =>
     ipcRenderer.invoke('tab:reopen-closed'),
+  suspendTab: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('tab:suspend', { id }),
+  wakeTab: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('tab:wake', { id }),
 
   // Window controls
   minimize: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
