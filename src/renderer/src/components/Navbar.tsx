@@ -316,6 +316,33 @@ export const Navbar: React.FC<NavbarProps> = ({
           onToggleTheme={onToggleTheme}
         />
       )}
+
+      {/* Page Loading Progress Bar */}
+      {isLoading && (
+        <div
+          data-testid="navbar-loading-bar"
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '2.5px',
+            overflow: 'hidden',
+            background: 'rgba(56, 189, 248, 0.12)',
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            className="animate-progress-bar"
+            style={{
+              height: '100%',
+              background: 'linear-gradient(90deg, var(--accent), var(--shield-active), var(--accent-purple))',
+              borderRadius: 'var(--radius-full)',
+              boxShadow: '0 0 8px rgba(56, 189, 248, 0.6)',
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

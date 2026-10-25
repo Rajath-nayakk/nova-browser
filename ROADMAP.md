@@ -10,7 +10,7 @@ This living roadmap tracks the structured, iterative engineering milestones for 
 - [ ] **M1.1**: Add tab pinning functionality (`isPinned`) to preserve persistent work tabs across sessions.
 - [ ] **M1.2**: Add tab duplication (`duplicateTab`) and context menu options on tabs.
 - [ ] **M1.3**: Implement audio playback indicator on tabs with one-click quick mute toggle.
-- [ ] **M1.4**: Add a Page Loading Progress Bar to the Navbar for visual feedback during network requests.
+- [x] **M1.4**: Add a Page Loading Progress Bar to the Navbar for visual feedback during network requests.
 - [ ] **M1.5**: Implement a Toast notification system (`ToastContext`) for non-blocking feedback (e.g., "Copied clean URL", "Bookmark saved").
 - [ ] **M1.6**: Add URL copy and page sharing actions to Navbar / AddressBar.
 - [ ] **M1.7**: Add zoom control indicators and reset buttons (`100%`) in Navbar.
